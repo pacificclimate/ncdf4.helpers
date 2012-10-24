@@ -1,10 +1,10 @@
 Package: ncdf4.helpers
-Version: 0.1-2
-Date: 2011-12-02
+Version: 0.1-8
+Date: 2012-10-23
 Title: Helper functions for dealing with ncdf4 output
 Author: David Bronaugh <bronaugh@uvic.ca> for the Pacific Climate Impacts Consortium (PCIC)
 Maintainer: David Bronaugh <bronaugh@uvic.ca>
-Depends: R (>= 2.10.0), ncdf4, PCICt
+Depends: R (>= 2.12.0), ncdf4, PCICt, abind
 Suggests: 
 Description: This package contains a collection of helper functions for dealing with NetCDF data loaded in using ncdf4.
 License: LGPL-2.1

@@ -1,3 +1,15 @@
+0.1-8: Add code to retrieve an arbitrary subset of a variable by axis.
+
+0.1-7: Add code to deal with true Gregorian calendars if desired.
+
+0.1-6: Add code to copy attributes from one file/var to another file/var.
+
+0.1-5: Add code to add bounds to timeseries returned if bounds are available.
+
+0.1-4: Add 'dim.names' parameter to nc.get.dim.axes .
+
+0.1-3: Add nc.get.climatology.bounds.var.list, make use of it in nc.get.variable.list .
+
 0.1-2: Add support for forcing a proleptic gregorian calendar.
 
 0.1-1: Initial version
