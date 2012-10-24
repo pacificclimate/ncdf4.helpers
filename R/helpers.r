@@ -31,7 +31,7 @@ nc.get.var.subset.by.axes <- function(f, v, axis.indices, axes.map=NULL) {
     axes.map <- nc.get.dim.axes(f, v)
   
   ## Check that all axes are in the map and that the names are the same as the dim names
-  stopifnot(all(!is.na(axes.map)))
+  stopifnot(all(names(axis.indices) %in% axes.map))
   stopifnot(names(axes.map) %in% nc.get.dim.names(f, v))
   
   ## Chunk consecutive sets of blocks into a request
