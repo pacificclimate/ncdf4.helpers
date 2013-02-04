@@ -26,6 +26,8 @@ nc.get.subset.recursive <- function(chunked.axes.indices, f, v, starts, counts, 
 
 ## Why not just have a NetCDF -class- that implements a subset operator that does the actual fetching?
 ## WARNING: Code is not fully tested.
+## FIXME: This should return the axis ordering as an attribute (or something)
+## FIXME: Add a drop option to be able to replicate R's (albeit stupid) behaviour of dropping 1 length dims.
 nc.get.var.subset.by.axes <- function(f, v, axis.indices, axes.map=NULL) {
   if(is.null(axes.map))
     axes.map <- nc.get.dim.axes(f, v)
@@ -322,3 +324,79 @@ nc.get.time.series <- function(f, filename.date.parsing=FALSE, hadley.hack=FALSE
 get.f.step.size <- function(d, f) {
   return(match.fun(f)(d[2:length(d)] - d[1:(length(d) - 1)]))
 }
+
+nc.get.polar.stereo.proj4.string <- function(f, grid.mapping.name) {
+  lat.ts.att <- ncatt_get(f, grid.mapping.name, "standard_parallel")
+  lat.0.att <- ncatt_get(f, grid.mapping.name, "latitude_of_projection_origin")
+  lon.0.att <- ncatt_get(f, grid.mapping.name, "straight_vertical_longitude_from_pole")
+  x.0.att <- ncatt_get(f, grid.mapping.name, "false_easting")
+  y.0.att <- ncatt_get(f, grid.mapping.name, "false_northing")
+
+  stopifnot(lat.ts.att$hasatt & lat.0.att$hasatt & lon.0.att$hasatt & x.0.att$hasatt & y.0.att$hasatt)
+
+  if(x.0.att$value == "")
+    x.0.att$value <- 0
+  
+  if(y.0.att$value == "")
+    y.0.att$value <- 0
+  
+  return(paste("+proj=stere +lat_ts=", lat.ts.att$value, " +lat_0=", lat.0.att$value, " +lon_0=", lon.0.att$value, " +x_0=", x.0.att$value, " +y_0=", y.0.att$value, " +k_0=1", sep=""))
+}
+
+## This is basically a dirty hack to make NARCCAP's RCM3 data come in cleanly.
+nc.get.rotated.pole.proj4.string <- function(f, grid.mapping.name) {
+  lat.0.att <- ncatt_get(f, grid.mapping.name, "north_pole_latitude")
+  lon.0.att <- ncatt_get(f, grid.mapping.name, "north_pole_longitude")
+  if(!(lat.0.att$hasatt & lon.0.att$hasatt)) {
+    lat.0.att <- ncatt_get(f, grid.mapping.name, "grid_north_pole_latitude")
+    lon.0.att <- ncatt_get(f, grid.mapping.name, "grid_north_pole_longitude")
+  }
+  stopifnot(lat.0.att$hasatt & lon.0.att$hasatt)
+
+  ## "+proj=somerc +lat_0=47.5 +y_0=3150000.0 +x_0=3900000.0 +lon_0=-97.0 +a=6371229.0 +b=6371229.0 +units=m"
+  return(paste("+proj=somerc +lat_0=", lat.0.att$value, " +lon_0=", 180 - lon.0.att$value, " +y_0=3150000.0 +x_0=3900000.0 +a=6371229.0 +b=6371229.0 +units=m", sep=""))
+}
+
+nc.get.lambert.conformal.conic.proj4.string <- function(f, grid.mapping.name) {
+  lat.ts.att <- ncatt_get(f, grid.mapping.name, "standard_parallel")
+
+  lat.0.att <- ncatt_get(f, grid.mapping.name, "latitude_of_projection_origin")
+  lon.0.att <- ncatt_get(f, grid.mapping.name, "longitude_of_central_meridian")
+  x.0.att <- ncatt_get(f, grid.mapping.name, "false_easting")
+  y.0.att <- ncatt_get(f, grid.mapping.name, "false_northing")
+
+  stopifnot(lat.ts.att$hasatt & lat.0.att$hasatt & lon.0.att$hasatt & x.0.att$hasatt & y.0.att$hasatt)
+  
+  return(paste("+proj=lcc +lat_0=", lat.0.att$value, " +lat_1=", lat.ts.att$value[1], " +lat_2=", lat.ts.att$value[2], " +lon_0=", lon.0.att$value, " +y_0=", y.0.att$value, " +x_0=", x.0.att$value, sep=""))
+}
+
+nc.get.transverse.mercator.proj4.string <- function(f, grid.mapping.name) {
+  lat.0.att <- ncatt_get(f, grid.mapping.name, "latitude_of_projection_origin")
+  lon.0.att <- ncatt_get(f, grid.mapping.name, "longitude_of_central_meridian")
+  k.0.att <- ncatt_get(f, grid.mapping.name, "scale_factor_at_central_meridian")
+  x.0.att <- ncatt_get(f, grid.mapping.name, "false_easting")
+  y.0.att <- ncatt_get(f, grid.mapping.name, "false_northing")
+
+  stopifnot(k.0.att$hasatt & lat.0.att$hasatt & lon.0.att$hasatt & x.0.att$hasatt & y.0.att$hasatt)
+
+  return(paste("+proj=tmerc +lat_0=", lat.0.att$value, " +lon_0=", lon.0.att$value, " +k_0=", k.0.att$value, " +y_0=", y.0.att$value, " +x_0=", x.0.att$value, sep=""))
+}
+
+## Returns the spatial reference ID of the data set, or WGS84 (4326) if nothing found
+nc.get.proj4.string <- function(f, v) {
+  grid.mapping.att <- ncatt_get(f, v, "grid_mapping")
+  if(!grid.mapping.att$hasatt) {
+    return("");
+  } else {
+    grid.mapping.name.att <- ncatt_get(f, grid.mapping.att$value, "grid_mapping_name")
+    
+    proj4.string <- switch(grid.mapping.name.att$value,
+                           polar_stereographic=nc.get.polar.stereo.proj4.string(f, grid.mapping.att$value),
+                           rotated_latitude_longitude=nc.get.rotated.pole.proj4.string(f, grid.mapping.att$value),
+                           lambert_conformal_conic=nc.get.lambert.conformal.conic.proj4.string(f, grid.mapping.att$value),
+                           transverse_mercator=nc.get.transverse.mercator.proj4.string(f, grid.mapping.att$value)
+                           )
+    return(proj4.string)
+  }
+}
+

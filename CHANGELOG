@@ -1,3 +1,5 @@
+0.2-1: Add code to create a proj4 string given a NetCDF variable and file for several projection types.
+
 0.1-8: Add code to retrieve an arbitrary subset of a variable by axis.
 
 0.1-7: Add code to deal with true Gregorian calendars if desired.
