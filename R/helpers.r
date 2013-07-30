@@ -2,6 +2,74 @@ library(ncdf4)
 library(PCICt)
 library(abind)
 
+get.split.filename.cmip5 <- function(cmip5.file) {
+  split.path <- strsplit(cmip5.file, "/")[[1]]
+  fn.split <- strsplit(tail(split.path, n=1), "_")[[1]]
+  names(fn.split) <- c("var", "tres", "model", "emissions", "run", "trange", rep(NA, max(0, length(fn.split) - 6)))
+  fn.split[length(fn.split)] <- strsplit(fn.split[length(fn.split)], "\\.")[[1]][1]
+  fn.split[c('tstart', 'tend')] <- strsplit(fn.split['trange'], "-")[[1]]
+  fn.split
+}
+
+nc.put.subset.recursive <- function(chunked.axes.indices, f, v, dat, starts, counts, axes.map) {
+  if(length(chunked.axes.indices) == 0) {
+    res <- ncvar_put(f, v, dat, start=starts, count=counts)
+  } else {
+    axis.index <- head(chunked.axes.indices, n=1)
+    axes.to.pass.on <- tail(chunked.axes.indices, n=-1)
+    axis.id <- names(axis.index)
+
+    if(length(axis.index[[1]]) == 1) {
+      ## Fast path
+      starts[axis.id] <- min(axis.index[[1]][[1]])
+      counts[axis.id] <- length(axis.index[[1]][[1]])
+      nc.put.subset.recursive(axes.to.pass.on, f, v, dat, starts, counts, axes.map)
+    } else {
+      ## Slow path
+      cum.indices <- c(0, cumsum(sapply(axis.index, length)))
+      dat.indices <- lapply(1:(length(cum.indices) - 1), function(x) { (cum.indices[x] + 1):cum.indices[x+1] })
+      dat.subindex <- lapply(dim(dat), function(x) { 1:x })
+      
+      res <- lapply(1:length(axis.index[[1]]), function(x) {
+        gc()
+        indices.to.put <- axis.index[[1]][[x]]
+        starts[axis.id] <- min(indices.to.put)
+        counts[axis.id] <- length(indices.to.put)
+        dat.subindex[[axes.map == axis.id]] <- dat.indices[[x]]
+        dat.sub <- do.call('[', c(list(dat), dat.subindex, drop=FALSE))
+        nc.put.subset.recursive(axes.to.pass.on, f, v, dat.sub, starts, counts, axes.map)
+      })
+    }
+  }
+}
+
+## WARNING: Code is not fully tested.
+nc.put.var.subset.by.axes <- function(f, v, dat, axis.indices, axes.map=NULL) {
+  if(is.null(axes.map))
+    axes.map <- nc.get.dim.axes(f, v)
+
+  if(length(axes.map) == 0)
+    return(c())
+  
+  ## Check that all axes are in the map and that the names are the same as the dim names
+  stopifnot(all(names(axis.indices) %in% axes.map))
+  stopifnot(names(axes.map) %in% nc.get.dim.names(f, v))
+  
+  ## Chunk consecutive sets of blocks into a request
+  chunked.axes.indices <- lapply(axis.indices, function(indices) {
+    if(length(indices) == 0) return(c())
+    boundary.indices <- c(0, which(diff(indices) != 1), length(indices))
+    lapply(1:(length(boundary.indices) - 1), function(x) { (indices[boundary.indices[x] + 1]):indices[boundary.indices[x + 1]] } )
+  })
+  
+  ## By default, fetch all data.
+  starts <- rep(1, length(f$var[[v]]$dim))
+  counts <- rep(-1, length(f$var[[v]]$dim))
+  names(starts) <- names(counts) <- axes.map
+  
+  return(nc.put.subset.recursive(chunked.axes.indices, f, v, dat, starts, counts, axes.map))
+}
+
 nc.get.subset.recursive <- function(chunked.axes.indices, f, v, starts, counts, axes.map) {
   if(length(chunked.axes.indices) == 0) {
     res <- ncvar_get(f, v, start=starts, count=counts, collapse_degen=FALSE)
@@ -15,12 +83,18 @@ nc.get.subset.recursive <- function(chunked.axes.indices, f, v, starts, counts, 
     axes.to.pass.on <- tail(chunked.axes.indices, n=-1)
     axis.id <- names(axis.index)
 
-    res <- lapply(axis.index[[1]], function(x) {
-      starts[axis.id] <- min(x)
-      counts[axis.id] <- length(x)
+    if(length(axis.index[[1]]) == 1) {
+      starts[axis.id] <- min(axis.index[[1]][[1]])
+      counts[axis.id] <- length(axis.index[[1]][[1]])
       nc.get.subset.recursive(axes.to.pass.on, f, v, starts, counts, axes.map)
-    })
-    do.call(abind, c(res, list(along=which(axes.map == axis.id))))
+    } else {
+      res <- lapply(axis.index[[1]], function(x) {
+        starts[axis.id] <- min(x)
+        counts[axis.id] <- length(x)
+        nc.get.subset.recursive(axes.to.pass.on, f, v, starts, counts, axes.map)
+      })
+      do.call(abind, c(res, list(along=which(axes.map == axis.id))))
+    }
   }
 }
 
@@ -31,6 +105,9 @@ nc.get.subset.recursive <- function(chunked.axes.indices, f, v, starts, counts, 
 nc.get.var.subset.by.axes <- function(f, v, axis.indices, axes.map=NULL) {
   if(is.null(axes.map))
     axes.map <- nc.get.dim.axes(f, v)
+
+  if(length(axes.map) == 0)
+    return(c())
   
   ## Check that all axes are in the map and that the names are the same as the dim names
   stopifnot(all(names(axis.indices) %in% axes.map))
@@ -40,8 +117,7 @@ nc.get.var.subset.by.axes <- function(f, v, axis.indices, axes.map=NULL) {
   chunked.axes.indices <- lapply(axis.indices, function(indices) {
     if(length(indices) == 0) return(c())
     boundary.indices <- c(0, which(diff(indices) != 1), length(indices))
-    boundary.matrix <- rbind(boundary.indices[1:(length(boundary.indices) - 1)] + 1, boundary.indices[2:length(boundary.indices)])
-    as.data.frame(apply(boundary.matrix, 2, function(x) { indices[x[1]:x[2]] } ))
+    lapply(1:(length(boundary.indices) - 1), function(x) { (indices[boundary.indices[x] + 1]):indices[boundary.indices[x + 1]] } )
   })
   
   ## By default, fetch all data.
@@ -166,7 +242,10 @@ nc.get.variable.list <- function(f, min.dims=1) {
 }
 
 nc.get.dim.names <- function(f, v) {
-  return(unlist(lapply(f$var[[v]]$dim, function(x) { return(x$name) })))
+  if(missing(v))
+    return(unlist(lapply(f$dim, function(x) { return(x$name) })))
+  else
+    return(unlist(lapply(f$var[[v]]$dim, function(x) { return(x$name) })))
 }
 
 nc.get.dim.axes.from.names <- function(f, v, dim.names) {
@@ -190,10 +269,18 @@ nc.get.coordinate.axes <- function(f, v) {
 ## Axes are X, Y, Z (depth, plev, etc), T (time), and S (space, for reduced grids)
 nc.get.dim.axes <- function(f, v, dim.names) {
   if(missing(dim.names))
-     dim.names <- nc.get.dim.names(f, v)
-     
-  dim.axes <- sapply(dim.names, function(x) { if((!is.null(f$dim[[x]]) && !f$dim[[x]]$create_dimvar) || is.null(f$var[[x]])) return(NA); a <- ncatt_get(f, x, "axis"); return(ifelse(a$hasatt, toupper(a$value), NA)) })
-  contains.compress.att <- sapply(dim.names, function(x) { ifelse((!is.null(f$dim[[x]]) && f$dim[[x]]$create_dimvar) || !is.null(f$var[[x]]), ncatt_get(f, x, "compress")$hasatt, FALSE) })
+    if(missing(v))
+      dim.names <- nc.get.dim.names(f)
+    else
+      dim.names <- nc.get.dim.names(f, v)
+
+  if(length(dim.names) == 0)
+    return(c())
+
+  has.dim.no.data <- function(x) { !is.null(f$dim[[x]]) && !is.null(f$dim[[x]]$create_dimvar) && !f$dim[[x]]$create_dimvar }
+  
+  dim.axes <- sapply(dim.names, function(x) { if(has.dim.no.data(x)) return(NA); a <- ncatt_get(f, x, "axis"); return(ifelse(a$hasatt, toupper(a$value), NA)) })
+  contains.compress.att <- sapply(dim.names, function(x) { ifelse(has.dim.no.data(x) || !is.null(f$var[[x]]), ncatt_get(f, x, "compress")$hasatt, FALSE) })
 
   ## Fill in dim axes best we can if axis attributes are missing
   if(any(is.na(dim.axes)))

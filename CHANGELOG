@@ -1,3 +1,11 @@
+0.2-5: Fix bugs with nc.put.var.subset.by.axes, improve performance and memory usage of nc.get.var.subset.by.axes .
+
+0.2-4: Add complementary function to nc.get.var.subset.by.axes (nc.put.var.subset.by.axes).
+
+0.2-3: Modify nc.get.dim.axes to handle variables without any dimensions more gracefully; modify nc.get.var.subset.by.axes to hangle no-dimensions data.
+
+0.2-2: Modify nc.get.dim.axes to give dim axes for all dims if no variable specified.
+
 0.2-1: Add code to create a proj4 string given a NetCDF variable and file for several projection types.
 
 0.1-8: Add code to retrieve an arbitrary subset of a variable by axis.
