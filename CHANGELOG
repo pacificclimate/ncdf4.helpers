@@ -1,3 +1,9 @@
+0.3-1: Incorporate documentation, release on CRAN.
+
+0.2-7: Add tolerance to nc.is.regular.dimension.
+
+0.2-6: Add functionality to nc.copy.atts to rename attributes while copying.
+
 0.2-5: Fix bugs with nc.put.var.subset.by.axes, improve performance and memory usage of nc.get.var.subset.by.axes .
 
 0.2-4: Add complementary function to nc.get.var.subset.by.axes (nc.put.var.subset.by.axes).

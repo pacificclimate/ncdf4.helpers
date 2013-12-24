@@ -2,6 +2,60 @@ library(ncdf4)
 library(PCICt)
 library(abind)
 
+#' Get subsets to be distributed to workers
+#'
+#' Get subsets to be distributed to workers
+#'
+#' Given a desired number of values (\code{num.vals}), the sizes of the dimensions (\code{dim.size}), the corresponding axes (\code{dim.axes}), the desired axis to split on (\code{axis.to.split.on}), and optionally the minimum number of chunks to return (\code{min.num.chunks}), returns a list of lists of subsets appropriate to be passed to \code{nc.put.var.subsets.by.axes} or \code{nc.get.var.subsets.by.axes}.
+#'
+#' This functionality is useful when you want to keep memory consumption down but want to maximize the amount read in at one time to make the best use of available I/O bandwidth.
+#'
+#' @param num.vals The maximum number of values to process at once.
+#' @param dim.size The sizes of the dimensions of the data to be processed.
+#' @param dim.axes The axes of the data, as returned by \code{nc.get.dim.axes}.
+#' @param axis.to.split.on The axis (X, Y, T, etc) to split the data on.
+#' @param min.num.chunks The minimum number of chunks to generate, even if the chunks are considerably smaller than \code{num.vals}.
+#' @return A list of lists describing subsets in a suitable form to be passed to \code{nc.put.var.subsets.by.axes} or \code{nc.get.var.subsets.by.axes}.
+#'
+#' @examples
+#' ## FIXME
+#' @export
+get.cluster.worker.subsets <- function(num.vals, dim.size, dim.axes, axis.to.split.on, min.num.chunks=1) {
+  split.dim <- dim.axes == axis.to.split.on
+  split.dim.size <- dim.size[split.dim]
+  split.slice.size <- prod(dim.size[!split.dim])
+  
+  rows.per.slice <- num.vals / split.slice.size
+  if(split.dim.size / rows.per.slice < min.num.chunks)
+    rows.per.slice <- split.dim.size / min.num.chunks
+  
+  stopifnot(rows.per.slice >= 1)
+    
+  rows.per.slice <- floor(rows.per.slice)
+
+  row.fraction <- (0:(ceiling((split.dim.size) / rows.per.slice) - 1) * rows.per.slice)
+  split.dim.starts <- floor(row.fraction) + 1
+  split.dim.ends <- split.dim.starts + rows.per.slice - 1
+  split.dim.ends[length(split.dim.ends)] <- split.dim.size
+  return(lapply(1:length(split.dim.starts), function(x) {
+    subset <- list(split.dim.starts[x]:split.dim.ends[x])
+    names(subset) <- c(dim.axes[split.dim])
+    subset
+  }))
+}
+
+#' Splits up a CMIP5 filename.
+#'
+#' Splits up a CMIP5 filename into its component parts.
+#'
+#' This function splits up a given CMIP5 filename, returning a named vector consisting of the descriptive parts of the filename.
+#'
+#' @param cmip5.file The filename to be split.
+#' @return A vector containing the variable (var), time resolution (tres), model (model), emissions scenario (emissions), run (run), time range (trange), time start (tstart) and time end (tend) for the file.
+#'
+#' @examples
+#' ## FIXME
+#' @export
 get.split.filename.cmip5 <- function(cmip5.file) {
   split.path <- strsplit(cmip5.file, "/")[[1]]
   fn.split <- strsplit(tail(split.path, n=1), "_")[[1]]
@@ -11,6 +65,7 @@ get.split.filename.cmip5 <- function(cmip5.file) {
   fn.split
 }
 
+## In the case of the put method, the data is assumed to be in the same dimension order as the output file.
 nc.put.subset.recursive <- function(chunked.axes.indices, f, v, dat, starts, counts, axes.map) {
   if(length(chunked.axes.indices) == 0) {
     res <- ncvar_put(f, v, dat, start=starts, count=counts)
@@ -44,12 +99,38 @@ nc.put.subset.recursive <- function(chunked.axes.indices, f, v, dat, starts, cou
 }
 
 ## WARNING: Code is not fully tested.
-nc.put.var.subset.by.axes <- function(f, v, dat, axis.indices, axes.map=NULL) {
+#' Puts a data subset in the place described by the named list of axes.
+#'
+#' Puts a data subset in the place described by the named list of axes.
+#'
+#' This function will write data (\code{dat}) out to the specified file (\code{f}) and variable (\code{v}) at the location specified by \code{axis.indices}.
+#'
+#' @param f An object of class \code{ncdf4} which represents a NetCDF file.
+#' @param v A string naming a variable in a file or an object of class \code{ncvar4}.
+#' @param axis.indices A list consisting of zero or more vectors of indices, named by which axis they refer to (X, Y, T, etc).
+#' @param axes.map An optional vector mapping axes to NetCDF dimensions. If not supplied, it will be generated from the file.
+#' @param input.axes An optional vector containing the input axis map. If supplied, it will be used to permute the data from the axis order in the input data, to the axis order in the output data.
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
+nc.put.var.subset.by.axes <- function(f, v, dat, axis.indices, axes.map=NULL, input.axes=NULL) {
   if(is.null(axes.map))
     axes.map <- nc.get.dim.axes(f, v)
 
   if(length(axes.map) == 0)
     return(c())
+
+  ## Permute data to match order within file...
+  if(input.axes != NULL) {
+    stopifnot(length(dim(dat)) == length(input.axes))
+    stopifnot(length(input.axes) == length(axes.map))
+    o.axes <- order(axes.map)
+    o.input <- order(input.axes)
+    if(o.axes != o.input)
+      dat <- aperm(dat, o.axes[o.input])
+  }
   
   ## Check that all axes are in the map and that the names are the same as the dim names
   stopifnot(all(names(axis.indices) %in% axes.map))
@@ -102,6 +183,21 @@ nc.get.subset.recursive <- function(chunked.axes.indices, f, v, starts, counts, 
 ## WARNING: Code is not fully tested.
 ## FIXME: This should return the axis ordering as an attribute (or something)
 ## FIXME: Add a drop option to be able to replicate R's (albeit stupid) behaviour of dropping 1 length dims.
+#' Gets a data subset in the place described by the named list of axes.
+#'
+#' Gets a data subset in the place described by the named list of axes.
+#'
+#' This function will read data from the specified file (\code{f}) and variable (\code{v}) at the location specified by \code{axis.indices}.
+#'
+#' @param f An object of class \code{ncdf4} which represents a NetCDF file.
+#' @param v A string naming a variable in a file or an object of class \code{ncvar4}.
+#' @param axis.indices A list consisting of zero or more vectors of indices, named by which axis they refer to (X, Y, T, etc).
+#' @param axes.map An optional vector mapping axes to NetCDF dimensions. If not supplied, it will be generated from the file.
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
 nc.get.var.subset.by.axes <- function(f, v, axis.indices, axes.map=NULL) {
   if(is.null(axes.map))
     axes.map <- nc.get.dim.axes(f, v)
@@ -128,21 +224,38 @@ nc.get.var.subset.by.axes <- function(f, v, axis.indices, axes.map=NULL) {
   return(nc.get.subset.recursive(chunked.axes.indices, f, v, starts, counts, axes.map))
 }
 
-nc.permute.data.to.match <- function(f.pcic, f.cccma, v.pcic, v.cccma, dat.cccma) {
+#' Reorder data so that X and Y axes match.
+#'
+#' Reorder data so that X and Y axes match.
+#'
+#' This function will take a given current file, variable, and 3D slab of data and permute the data along the X and Y axes such that it matches the order of the data in the desired file and variable.
+#'
+#' @param f.desired The desired file (an object of class \code{ncdf4})
+#' @param f.source The source file (an object of class \code{ncdf4})
+#' @param v.desired The desired variable: a string naming a variable in a file or an object of class \code{ncvar4}.
+#' @param v.source The source variable: a string naming a variable in a file or an object of class \code{ncvar4}.
+#' @param dat The data to be reordered to match the XY ordering desired.
+#' @return The data permuted to match the XY ordering desired.
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
+nc.match.xy <- function(f.desired, f.source, v.desired, v.source, dat) {
   ## Permute data to account for upside-down data and other stupid problems that cause
   ## comparisons to be irrelevant.
   ## Also subset time...
-  f.pcic.axes <- nc.get.dim.axes(f.pcic, v.pcic)
-  f.cccma.axes <- nc.get.dim.axes(f.cccma, v.cccma)
+  f.desired.axes <- nc.get.dim.axes(f.desired, v.desired)
+  f.source.axes <- nc.get.dim.axes(f.source, v.source)
 
   warning("Poorly tested function. Don't expect everything to work right.")
   
-  stopifnot(f.pcic.axes[1] == f.cccma.axes[1] && f.pcic.axes[2] == f.cccma.axes[2])
+  stopifnot(f.desired.axes[1] == f.source.axes[1] && f.desired.axes[2] == f.source.axes[2])
   
-  x.dim.pcic <- (f.pcic$dim[[names(f.pcic.axes)[f.pcic.axes == "X"]]]$vals + 360) %% 360
-  y.dim.pcic <- f.pcic$dim[[names(f.pcic.axes)[f.pcic.axes == "Y"]]]$vals
-  x.dim.cccma <- (f.cccma$dim[[names(f.cccma.axes)[f.cccma.axes == "X"]]]$vals + 360) %% 360
-  y.dim.cccma <- f.cccma$dim[[names(f.cccma.axes)[f.cccma.axes == "Y"]]]$vals
+  x.dim.pcic <- (f.desired$dim[[names(f.desired.axes)[f.desired.axes == "X"]]]$vals + 360) %% 360
+  y.dim.pcic <- f.desired$dim[[names(f.desired.axes)[f.desired.axes == "Y"]]]$vals
+  x.dim.cccma <- (f.source$dim[[names(f.source.axes)[f.source.axes == "X"]]]$vals + 360) %% 360
+  y.dim.cccma <- f.source$dim[[names(f.source.axes)[f.source.axes == "Y"]]]$vals
   stopifnot(length(x.dim.pcic) == length(x.dim.cccma))
   stopifnot(length(y.dim.pcic) == length(y.dim.cccma))
   
@@ -150,28 +263,43 @@ nc.permute.data.to.match <- function(f.pcic, f.cccma, v.pcic, v.cccma, dat.cccma
   y.permute <- order(y.dim.cccma)[order(order(y.dim.pcic))]
 
   ## FIXME: Shaky assumptions galore here.
-  dim(dat.cccma) <- dim(dat.cccma)[which(f.cccma.axes %in% f.pcic.axes)]
+  dim(dat.cccma) <- dim(dat.cccma)[which(f.source.axes %in% f.desired.axes)]
   dat.cccma[x.permute, y.permute, ]
 }
   
-## Copy attributes from one variable in one file, to another file
-nc.copy.atts <- function(f.src, v.src, f.dest, v.dest, exception.list=NULL, definemode=FALSE) {
+#' Copy attributes from one variable in one file to another file.
+#' 
+#' Copy attributes from one variable in one file to another file.
+#'
+#' This function copies attributes from a variable in one file to a variable in another file. If the source or destination variable is 0, then attributes are copied from/to the NetCDF file's global attributes.
+#'
+#' If desired, some attributes can be left out using \code{exception.list}, a vector of names of attributes to be excluded.
+#' 
+#' Attributes can also be renamed at the destination using \code{rename.mapping}, a named vector of strings in which the name of the attribute to be renamed is the name, and the attribute's new name is the value.
+#'
+#' @param f.src The source file (an object of class \code{ncdf4})
+#' @param v.src The source variable: a string naming a variable in a file or an object of class \code{ncvar4}.
+#' @param f.dest The destination file (an object of class \code{ncdf4})
+#' @param v.dest The destination variable: a string naming a variable in a file or an object of class \code{ncvar4}.
+#' @param exception.list A vector containing names of variables not to be copied.
+#' @param rename.mapping A vector containing named values mapping source to destination names.
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
+nc.copy.atts <- function(f.src, v.src, f.dest, v.dest, exception.list=NULL, rename.mapping=NULL, definemode=FALSE) {
   atts <- ncatt_get(f.src, v.src)
   if(length(atts) > 0) {
     if(!definemode)
       nc_redef(f.dest)
 
-    ## Copy atts, with or without an exception list
-    if(is.null(exception.list)) {
-      lapply(names(atts), function(x) {
-        ncatt_put(f.dest, v.dest, x, atts[[x]], definemode=TRUE)
-      })
-    } else {
-      lapply(names(atts), function(x) {
-        if(!(x %in% exception.list))
-          ncatt_put(f.dest, v.dest, x, atts[[x]], definemode=TRUE)
-      })
-    }
+    lapply(names(atts), function(x) {
+      if(!(x %in% exception.list)) {
+        att.name <- if(x %in% names(rename.mapping)) rename.mapping[x] else x
+        ncatt_put(f.dest, v.dest, att.name, atts[[x]], definemode=TRUE)
+      }
+    })
 
     if(!definemode)
       nc_enddef(f.dest)
@@ -179,6 +307,21 @@ nc.copy.atts <- function(f.src, v.src, f.dest, v.dest, exception.list=NULL, defi
 }
 
 ## Returns the values corresponding to the dimension variable in question
+#' Get dimension corresponding to a given axis
+#'
+#' Get dimension corresponding to a given axis
+#'
+#' This function returns the dimension (of class 'ncdim4') corresponding to the specified axis (X, Y, Z, T, or S).
+#'
+#' @param f The file (an object of class \code{ncdf4})
+#' @param v The source variable: a string naming a variable in a file or an object of class \code{ncvar4}.
+#' @param axis The axis to retrieve the dimension for: a string consisting of either X, Y, Z, T, or S.
+#' @return An object of class \code{ncdim4} if a dimension is found for the specified axis; \code{NA} otherwise.
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
 nc.get.dim.for.axis <- function(f, v, axis) {
   dims <- f$var[[v]]$dim
   axes <- nc.get.dim.axes(f, v)
@@ -192,6 +335,19 @@ nc.get.dim.for.axis <- function(f, v, axis) {
 }
 
 ## Returns a list of strings corresponding to bounds variables
+#' Get a list of names of dimension bounds variables.
+#' 
+#' Get a list of names of dimension bounds variables.
+#'
+#' This function returns the names of any dimension bounds variables found in a file.
+#'
+#' @param f The file (an object of class \code{ncdf4})
+#' @return A character vector naming all of the dimension bounds variables found.
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
 nc.get.dim.bounds.var.list <- function(f) {
   dimension.vars <- names(f$dim)
   return(unlist(sapply(names(f$dim), function(x) {
@@ -212,6 +368,19 @@ nc.get.dim.bounds.var.list <- function(f) {
 }
 
 ## Returns a list of climatology bounds variables.
+#' Get a list of names of climatology bounds variables.
+#' 
+#' Get a list of names of climatology bounds variables.
+#'
+#' This function returns the names of any climatology bounds variables found in a file.
+#'
+#' @param f The file (an object of class \code{ncdf4})
+#' @return A character vector naming all of the climatology bounds variables found.
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
 nc.get.climatology.bounds.var.list <- function(f) {
   dim.list <- names(f$dim)
   is.climatology<- sapply(dim.list, function(x) {
@@ -226,6 +395,22 @@ nc.get.climatology.bounds.var.list <- function(f) {
 }
 
 ## Returns a list of strings corresponding to actual variables in files (not lat/lon/etc).
+#' Get a list of names of data variables.
+#' 
+#' Get a list of names of data variables.
+#'
+#' This function returns the names of any data variables found in the file -- that is, variables which are NOT dimension variables, dimension bounds variables, climatology bounds variables, coordinate variables, or grid mapping variables.
+#' 
+#' Optionally, one may require that the variables have a minimum number of dimensions; this can eliminate unwanted variables left in files.
+#'
+#' @param f The file (an object of class \code{ncdf4})
+#' @param min.dims The minimum number of dimensions a variable must have to be included.
+#' @return A character vector naming all of the data variables found.
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
 nc.get.variable.list <- function(f, min.dims=1) {
   var.list <- names(f$var)
   enough.dims <- sapply(var.list, function(v) { length(f$var[[v]]$dim) >= min.dims } )
@@ -241,6 +426,20 @@ nc.get.variable.list <- function(f, min.dims=1) {
   return(var.list[var.mask])
 }
 
+#' Get a list of names of dimensions.
+#' 
+#' Get a list of names of dimensions.
+#'
+#' This function returns the names of dimensions in a file or, if \code{v} is also supplied, attached to a particular variable.
+#'
+#' @param f The file (an object of class \code{ncdf4})
+#' @param v Optionally, a variable
+#' @return A character vector naming the dimensions found.
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
 nc.get.dim.names <- function(f, v) {
   if(missing(v))
     return(unlist(lapply(f$dim, function(x) { return(x$name) })))
@@ -248,12 +447,42 @@ nc.get.dim.names <- function(f, v) {
     return(unlist(lapply(f$var[[v]]$dim, function(x) { return(x$name) })))
 }
 
+#' Infer dimension axes from names of dimensions.
+#' 
+#' Infer dimension axes from names of dimensions.
+#'
+#' This function makes educated guesses as to what axes dimensions may apply to in the case of files with poor metadata.
+#'
+#' @param f The file (an object of class \code{ncdf4})
+#' @param v The name of a variable
+#' @param dim.names Optionally, dimension names (to avoid looking them up repeatedly)
+#' @return A named character vector mapping dimension names to axes.
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
 nc.get.dim.axes.from.names <- function(f, v, dim.names) {
   if(missing(dim.names))
     dim.names <- nc.get.dim.names(f, v)
   return(sapply(dim.names, function(x, y) { ifelse(any(x == names(y)), y[x == names(y)], NA) }, c("lat"="Y", "latitude"="Y", "lon"="X", "longitude"="X", "xc"="X", "yc"="Y", "x"="X", "y"="Y", "time"="T", "timeofyear"="T", "plev"="Z", "lev"="Z", "level"="Z")))
 }
 
+## FIXME: What is the point of this function?
+#' Get a list of dimension variables and axes for a variable's coordinate variable
+#' 
+#' Get a list of dimension variables and axes for a variable's coordinate variable
+#'
+#' This function returns a named list of axes, the names of which are the associated dimension variables.
+#'
+#' @param f The file (an object of class \code{ncdf4})
+#' @param v The name of a variable
+#' @return A named character vector containing axes, the names of which are the corresponding dimension variables.
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
 nc.get.coordinate.axes <- function(f, v) {
   coords.att <- ncatt_get(f, v, "coordinates")
   if(coords.att$hasatt) {
@@ -267,6 +496,25 @@ nc.get.coordinate.axes <- function(f, v) {
 
 ## Returns dimension axes according to direct (reading 'axis' attribute) and indirect (inference from dimension names) methods.
 ## Axes are X, Y, Z (depth, plev, etc), T (time), and S (space, for reduced grids)
+#' Get dimension axes
+#' 
+#' Get dimension axes for the given variable
+#'
+#' This function returns the dimension axes for a given variable as a named character vector; the names are the names of the corresponding dimensions.
+#'
+#' Axes are X, Y, Z (depth, plev, etc), T (time), and S (space, for reduced grids).
+#'
+#' Some inferences may be made if there is no 'axis' attribute on one or more dimension variables.
+#'
+#' @param f The file (an object of class \code{ncdf4})
+#' @param v The name of a variable
+#' @param dim.names Optionally, dimension names (to avoid looking them up repeatedly)
+#' @return A named character vector mapping dimension names to axes.
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
 nc.get.dim.axes <- function(f, v, dim.names) {
   if(missing(dim.names))
     if(missing(v))
@@ -296,6 +544,20 @@ nc.get.dim.axes <- function(f, v, dim.names) {
 }
 
 ## Returns the dimensions used by the compressed axis
+#' Get X and Y dimension variables for reduced (compressed) grids.
+#' 
+#' Get X and Y dimension variables for reduced (compressed) grids.
+#'
+#' This function retrieves the X and Y dimensions for reduced (compressed) grids, returning a list containing the X and Y dimensions.
+#'
+#' @param f The file (an object of class \code{ncdf4})
+#' @param v The name of a variable
+#' @return A list consisting of two members of class \code{ncdim4}: x.dim for the X axis, and y.dim for the Y axis.
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
 nc.get.compress.dims <- function(f, v) {
   dim.names <- nc.get.dim.names(f, v)
   dim.axes <- nc.get.dim.axes(f, v)
@@ -307,16 +569,61 @@ nc.get.compress.dims <- function(f, v) {
 }
 
 ## Returns TRUE if the given data series is regular (ie: evenly spaced steps)
-nc.is.regular.dimension <- function(d) {
-  return(get.f.step.size(d, min) == get.f.step.size(d, max))
+## Tolerance is as a fraction
+#' Determine if a dimension is regular
+#' 
+#' Determine if a dimension is regular
+#' 
+#' Given supplied data and optionally a tolerance level, determine if the dimension is regular or not.
+#'
+#' @param d The data to be tested
+#' @param tolerence The tolerance for variation in step size.
+#' @return TRUE if the data is regular; FALSE if not.
+#'
+#' @examples
+#' ## FIXME
+#' 
+#' @export
+nc.is.regular.dimension <- function(d, tolerance=0.000001) {
+  return(abs((get.f.step.size(d, min) / get.f.step.size(d, max)) - 1) < tolerance)
 }
 
-## Gets multiplier for time scale given units
+#' Gets multiplier for time scale given units
+#' 
+#' Gets multiplier for time scale given units
+#'
+#' Given supplied units (days, hours, etc) returns a multiplier to convert the units into seconds.
+#'
+#' @param x The time scale
+#' @return A numeric conversion factor to convert to seconds.
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
 nc.get.time.multiplier <- function(x) {
   return(switch(x, "days"=86400, "hours"=3600, "minutes"=60, "months"=86400 * 30))
 }
 
 ## Returns the time series as PCICt
+#' Returns time axis data as PCICt for a file
+#'
+#' Returns time axis data as PCICt for a file
+#'
+#' This function returns time data for a file as PCICt, doing all necessary conversions.
+#'
+#' @param f The file (an object of class \code{ncdf4})
+#' @param filename.date.parsing Whether to attempt to parse dates out of filenames
+#' @param hadley.hack Specific hack for idiots who use 2-digit years for the time:units field
+#' @param cdo.hack Enable workaround to get around CDO's habit of breaking the time axis by not changing time:units when it changes the effective calendar
+#' @param correct.for.gregorian.julian Specific workaround for Gregorian-Julian calendar transitions in non-proleptic Gregorian calendars
+#' @param return.bounds Whether to return the time bounds as an additional attribute
+#' @return A vector of PCICt objects, optionally with bounds
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
 nc.get.time.series <- function(f, filename.date.parsing=FALSE, hadley.hack=FALSE, cdo.hack=FALSE, correct.for.gregorian.julian=FALSE, return.bounds=FALSE) {
   ## FIXME: Identify dim by axis here...
   time.var.name <- "time"
@@ -403,11 +710,53 @@ nc.get.time.series <- function(f, filename.date.parsing=FALSE, hadley.hack=FALSE
   }
 }
 
+#' Creates time bounds for a time series
+#'
+#' Creates time bounds for a time series
+#'
+#' Given a time series of PCICt, returns a set of bounds for that time series based the supplied units.
+#'
+#' @param ts The time values, of type \code{PCICt}
+#' @param unit The units to be used.
+#' @return 2-dimensional bounds array for the time values.
+#'
+#' @examples
+#' ## FIXME
+#'
+#1 @export
+nc.make.time.bounds <- function(ts, unit=c("year", "month")) {
+  unit <- match.arg(unit)
+  multiplier <- switch(unit, year=1, month=12)
+  r <- range(ts)
+  r.years <- as.numeric(format(r, "%Y"))
+  start.date <- as.PCICt(paste(r.years[1], "-01-01", sep=""), attr(ts, "cal"))
+  num.years <- r.years[2] - r.years[1] + 1
+  padded.dates <- seq(start.date, by=paste("1", unit), length.out=num.years * multiplier + 1)
+  padded.length <- length(padded.dates)
+  bounds <- c(padded.dates[1:(padded.length - 1)], padded.dates[2:padded.length] - 86400)
+  dim(bounds) <- c(padded.length - 1, 2)
+  bounds
+}
+
 ##nc.apply <- function(var, margin, fun, nc.file, chunk.size.mb=1000, ...) {
 ##  if(any(margin > length(nc.file$var[[var]]$dim
 ##  
 ##}
 
+#' Get step size for data
+#'
+#' Get step size for data
+#'
+#' Gets the step size for data, aggregated by the supplied function.
+#'
+#' @param d The data to have the step size determined
+#' @param f The function to aggregate the step size
+#' @return The step size
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
 get.f.step.size <- function(d, f) {
   return(match.fun(f)(d[2:length(d)] - d[1:(length(d) - 1)]))
 }
@@ -470,6 +819,20 @@ nc.get.transverse.mercator.proj4.string <- function(f, grid.mapping.name) {
 }
 
 ## Returns the spatial reference ID of the data set, or WGS84 (4326) if nothing found
+#' Gets the proj4 string for a file
+#'
+#' Gets the proj4 string for a file
+#'
+#' Given a file and a variable, attempts to determine what the proj4 string for the given file should be. If no projection data is found, returns an empty string.
+#'
+#' @param f The file (an object of class \code{ncdf4})
+#' @param v The name of a variable
+#' @return A string containing the proj4 string
+#'
+#' @examples
+#' ## FIXME
+#'
+#' @export
 nc.get.proj4.string <- function(f, v) {
   grid.mapping.att <- ncatt_get(f, v, "grid_mapping")
   if(!grid.mapping.att$hasatt) {
