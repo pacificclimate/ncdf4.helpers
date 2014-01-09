@@ -18,7 +18,10 @@ library(abind)
 #' @return A list of lists describing subsets in a suitable form to be passed to \code{nc.put.var.subsets.by.axes} or \code{nc.get.var.subsets.by.axes}.
 #'
 #' @examples
-#' ## FIXME
+#' ## Get a subset from an example
+#' subsets <- get.cluster.worker.subsets(1E7, c(128, 64, 50000),
+#'                                       c(lon="X", lat="Y", time="T"), "Y")
+#' 
 #' @export
 get.cluster.worker.subsets <- function(num.vals, dim.size, dim.axes, axis.to.split.on, min.num.chunks=1) {
   split.dim <- dim.axes == axis.to.split.on
@@ -54,7 +57,9 @@ get.cluster.worker.subsets <- function(num.vals, dim.size, dim.axes, axis.to.spl
 #' @return A vector containing the variable (var), time resolution (tres), model (model), emissions scenario (emissions), run (run), time range (trange), time start (tstart) and time end (tend) for the file.
 #'
 #' @examples
-#' ## FIXME
+#' ## Split up filename into component bits
+#' split.bits <- get.split.filename.cmip5("pr/pr_day_MRI-CGCM3_historical_r1i1p1_18500101-20051231.nc")
+#' 
 #' @export
 get.split.filename.cmip5 <- function(cmip5.file) {
   split.path <- strsplit(cmip5.file, "/")[[1]]
@@ -112,7 +117,13 @@ nc.put.subset.recursive <- function(chunked.axes.indices, f, v, dat, starts, cou
 #' @param input.axes An optional vector containing the input axis map. If supplied, it will be used to permute the data from the axis order in the input data, to the axis order in the output data.
 #'
 #' @examples
-#' ## FIXME
+#' ## Copy a subset of the data from one location to another.
+#' \dontrun{
+#' f <- nc_open("pr.nc")
+#' dat <- nc.get.var.subset.by.axes(f1, "pr", list(X=1:4, Y=c(1, 3, 5)))
+#' nc.put.var.subset.by.axes(f1, "pr", dat, list(X=5:8, Y=1:3))
+#' nc_close(f)
+#' }
 #'
 #' @export
 nc.put.var.subset.by.axes <- function(f, v, dat, axis.indices, axes.map=NULL, input.axes=NULL) {
@@ -195,7 +206,12 @@ nc.get.subset.recursive <- function(chunked.axes.indices, f, v, starts, counts, 
 #' @param axes.map An optional vector mapping axes to NetCDF dimensions. If not supplied, it will be generated from the file.
 #'
 #' @examples
-#' ## FIXME
+#' ## Get a subset of the data.
+#' \dontrun{
+#' f <- nc_open("pr.nc")
+#' dat <- nc.get.var.subset.by.axes(f1, "pr", list(X=1:4, Y=c(1, 3, 5)))
+#' nc_close(f)
+#' }
 #'
 #' @export
 nc.get.var.subset.by.axes <- function(f, v, axis.indices, axes.map=NULL) {
@@ -238,7 +254,16 @@ nc.get.var.subset.by.axes <- function(f, v, axis.indices, axes.map=NULL) {
 #' @return The data permuted to match the XY ordering desired.
 #'
 #' @examples
-#' ## FIXME
+#' ## Copy attributes from one variable to another; but don't copy units or
+#' ## standard_name, and copy long_name as old_long_name.
+#' \dontrun{
+#' f1 <- nc_open("pr.nc")
+#' f2 <- nc_open("pr2.nc", write=TRUE)
+#' dat <- nc.get.var.subset.by.axes(f1, "pr")
+#' new.dat <- nc.match.xy(f2, f1, "pr", "pr", dat)
+#' nc_close(f1)
+#' nc_close(f2)
+#' }
 #'
 #' @export
 nc.match.xy <- function(f.desired, f.source, v.desired, v.source, dat) {
@@ -285,7 +310,17 @@ nc.match.xy <- function(f.desired, f.source, v.desired, v.source, dat) {
 #' @param rename.mapping A vector containing named values mapping source to destination names.
 #'
 #' @examples
-#' ## FIXME
+#' ## Copy attributes from one variable to another; but don't copy units or
+#' ## standard_name, and copy long_name as old_long_name.
+#' \dontrun{
+#' f1 <- nc_open("pr.nc")
+#' f2 <- nc_open("pr2.nc")
+#' nc.copy.atts(f1, "pr", f2, "pr", c("units", "standard_name"),
+#'              c(long_name="old_long_name"))
+#' dim.axes <- nc.get.dim.axes.from.names(f, "pr")
+#' nc_close(f1)
+#' nc_close(f2)
+#' }
 #'
 #' @export
 nc.copy.atts <- function(f.src, v.src, f.dest, v.dest, exception.list=NULL, rename.mapping=NULL, definemode=FALSE) {
@@ -319,7 +354,12 @@ nc.copy.atts <- function(f.src, v.src, f.dest, v.dest, exception.list=NULL, rena
 #' @return An object of class \code{ncdim4} if a dimension is found for the specified axis; \code{NA} otherwise.
 #'
 #' @examples
-#' ## FIXME
+#' ## Get dimension for X axis
+#' \dontrun{
+#' f <- nc_open("pr.nc")
+#' x.axis.dim <- nc.get.dim.axes.from.names(f, "pr", "X")
+#' nc_close(f)
+#' }
 #'
 #' @export
 nc.get.dim.for.axis <- function(f, v, axis) {
@@ -345,7 +385,12 @@ nc.get.dim.for.axis <- function(f, v, axis) {
 #' @return A character vector naming all of the dimension bounds variables found.
 #'
 #' @examples
-#' ## FIXME
+#' ## Get list of dimension bound variables
+#' \dontrun{
+#' f <- nc_open("pr.nc")
+#' dim.bounds.var.list <- nc.get.dim.bounds.var.list(f)
+#' nc_close(f)
+#' }
 #'
 #' @export
 nc.get.dim.bounds.var.list <- function(f) {
@@ -378,7 +423,12 @@ nc.get.dim.bounds.var.list <- function(f) {
 #' @return A character vector naming all of the climatology bounds variables found.
 #'
 #' @examples
-#' ## FIXME
+#' ## Get list of climatology bounds variables
+#' \dontrun{
+#' f <- nc_open("pr.nc")
+#' dim.axes <- nc.get.climatology.bounds.var.list(f)
+#' nc_close(f)
+#' }
 #'
 #' @export
 nc.get.climatology.bounds.var.list <- function(f) {
@@ -408,7 +458,12 @@ nc.get.climatology.bounds.var.list <- function(f) {
 #' @return A character vector naming all of the data variables found.
 #'
 #' @examples
-#' ## FIXME
+#' ## Get dimension axes from file by inferring them from dimension names
+#' \dontrun{
+#' f <- nc_open("pr.nc")
+#' var.list <- nc.get.variable.list(f)
+#' nc_close(f)
+#' }
 #'
 #' @export
 nc.get.variable.list <- function(f, min.dims=1) {
@@ -437,7 +492,12 @@ nc.get.variable.list <- function(f, min.dims=1) {
 #' @return A character vector naming the dimensions found.
 #'
 #' @examples
-#' ## FIXME
+#' ## Get dimension names
+#' \dontrun{
+#' f <- nc_open("pr.nc")
+#' dim.names <- nc.get.dim.names(f, "pr")
+#' nc_close(f)
+#' }
 #'
 #' @export
 nc.get.dim.names <- function(f, v) {
@@ -459,7 +519,12 @@ nc.get.dim.names <- function(f, v) {
 #' @return A named character vector mapping dimension names to axes.
 #'
 #' @examples
-#' ## FIXME
+#' ## Get dimension axes from file by inferring them from dimension names
+#' \dontrun{
+#' f <- nc_open("pr.nc")
+#' dim.axes <- nc.get.dim.axes.from.names(f, "pr")
+#' nc_close(f)
+#' }
 #'
 #' @export
 nc.get.dim.axes.from.names <- function(f, v, dim.names) {
@@ -480,7 +545,12 @@ nc.get.dim.axes.from.names <- function(f, v, dim.names) {
 #' @return A named character vector containing axes, the names of which are the corresponding dimension variables.
 #'
 #' @examples
-#' ## FIXME
+#' ## Get coordinate axes from file.
+#' \dontrun{
+#' f <- nc_open("pr.nc")
+#' coord.axes <- nc.get.coordinate.axes(f, "pr")
+#' nc_close(f)
+#' }
 #'
 #' @export
 nc.get.coordinate.axes <- function(f, v) {
@@ -512,7 +582,12 @@ nc.get.coordinate.axes <- function(f, v) {
 #' @return A named character vector mapping dimension names to axes.
 #'
 #' @examples
-#' ## FIXME
+#' ## Get dimension axes from file.
+#' \dontrun{
+#' f <- nc_open("pr.nc")
+#' dim.axes <- nc.get.dim.axes(f, "pr")
+#' nc_close(f)
+#' }
 #'
 #' @export
 nc.get.dim.axes <- function(f, v, dim.names) {
@@ -555,7 +630,12 @@ nc.get.dim.axes <- function(f, v, dim.names) {
 #' @return A list consisting of two members of class \code{ncdim4}: x.dim for the X axis, and y.dim for the Y axis.
 #'
 #' @examples
-#' ## FIXME
+#' ## Get compress dimensions from file.
+#' \dontrun{
+#' f <- nc_open("pr.nc")
+#' compress.dims <- nc.get.compress.dims(f, "pr")
+#' nc_close(f)
+#' }
 #'
 #' @export
 nc.get.compress.dims <- function(f, v) {
@@ -581,7 +661,13 @@ nc.get.compress.dims <- function(f, v) {
 #' @return TRUE if the data is regular; FALSE if not.
 #'
 #' @examples
-#' ## FIXME
+#' dat <- c(1, 2, 3, 4, 5, 6, 7)
+#' ## TRUE
+#' nc.is.regular.dimension(dat)
+#'
+#' dat[7] <- 7.001
+#' ## FALSE
+#' nc.is.regular.dimension(dat)
 #' 
 #' @export
 nc.is.regular.dimension <- function(d, tolerance=0.000001) {
@@ -598,7 +684,8 @@ nc.is.regular.dimension <- function(d, tolerance=0.000001) {
 #' @return A numeric conversion factor to convert to seconds.
 #'
 #' @examples
-#' ## FIXME
+#' ## Will return 3600
+#' mul <- nc.get.time.multiplier("hours")
 #'
 #' @export
 nc.get.time.multiplier <- function(x) {
@@ -621,10 +708,15 @@ nc.get.time.multiplier <- function(x) {
 #' @return A vector of PCICt objects, optionally with bounds
 #'
 #' @examples
-#' ## FIXME
+#' ## Get time series from file
+#' \dontrun{
+#' f <- nc_open("pr.nc")
+#' ts <- nc.get.time.series(f)
+#' nc_close(f)
+#' }
 #'
 #' @export
-nc.get.time.series <- function(f, filename.date.parsing=FALSE, hadley.hack=FALSE, cdo.hack=FALSE, correct.for.gregorian.julian=FALSE, return.bounds=FALSE) {
+nc.get.time.series <- function(f, correct.for.gregorian.julian=FALSE, return.bounds=FALSE) {
   ## FIXME: Identify dim by axis here...
   time.var.name <- "time"
   if(!(time.var.name %in% names(f$dim)) || !f$dim$time$create_dimvar)
@@ -632,15 +724,7 @@ nc.get.time.series <- function(f, filename.date.parsing=FALSE, hadley.hack=FALSE
 
   ## Hack to get around missing time axis on anomaly fields
   if(f$dim$time$len == 0) {
-    if(!filename.date.parsing)
-      return(NA)
-    
-    ## Try and infer anomaly period
-    filename.bits <- strsplit(rev(strsplit(f$filename, "/")[[1]])[1], "-")[[1]]
-    start.year <- filename.bits[5]
-    end.year <- strsplit(filename.bits[6], "\\.")[[1]][1]
-    
-    return(as.PCICt(c(paste(start.year, "-01-01", sep=""), paste(end.year, "-12-31", sep="")), "gregorian"))
+    return(NA)
   }
 
   time.units <- f$dim$time$units
@@ -662,18 +746,6 @@ nc.get.time.series <- function(f, filename.date.parsing=FALSE, hadley.hack=FALSE
 
     cal <- ifelse(time.calendar.att$hasatt, time.calendar.att$value, "gregorian")
     
-    ## Die in a fire, CDO
-    ## This dirty hack is to get around CDO throwing "Gregorian" on as time units on 360-day data, but putting
-    ## the time origin in the original 360-day calendar.
-    if(cdo.hack & cal != "360" & cal != "360_day" & grepl("([0-9]+)-02-30", time.origin.string))
-      return(NA)
-
-    ## FIXME: STAB HADLEY CENTER IN THE EYE
-    ## Another dirty hack, this time for HadCM3:
-    ## If the year field is of length 2, append "20" to it to put it in the 21st century.
-    if(hadley.hack && nchar(strsplit(time.origin.string, "-")[[1]][1]) == 2)
-      time.origin.string <- paste("20", time.origin.string, sep="")
-
     ## Specific hack for people too dumb to tell the difference between an O and a zero.
     time.origin.string <- gsub("O", "0", time.origin.string)
     
@@ -721,7 +793,8 @@ nc.get.time.series <- function(f, filename.date.parsing=FALSE, hadley.hack=FALSE
 #' @return 2-dimensional bounds array for the time values.
 #'
 #' @examples
-#' ## FIXME
+#' ts <- as.PCICt(c("1961-01-15", "1961-02-15", "1961-03-15"), cal="360")
+#' ts.bounds <- nc.make.time.bounds(ts, unit="month")
 #'
 #1 @export
 nc.make.time.bounds <- function(ts, unit=c("year", "month")) {
@@ -754,11 +827,17 @@ nc.make.time.bounds <- function(ts, unit=c("year", "month")) {
 #' @return The step size
 #'
 #' @examples
-#' ## FIXME
+#' dat <- c(1, 2, 3, 4, 5, 7)
+#' max.step.size <- get.f.step.size(dat, max)
+#' min.step.size <- get.f.step.size(dat, min)
 #'
 #' @export
 get.f.step.size <- function(d, f) {
-  return(match.fun(f)(d[2:length(d)] - d[1:(length(d) - 1)]))
+  return(match.fun(f)(diff(d, lag=1)))
+}
+
+normalize180 <- function(x) {
+  (x + 180) %% 360 - 180
 }
 
 nc.get.polar.stereo.proj4.string <- function(f, grid.mapping.name) {
@@ -779,7 +858,6 @@ nc.get.polar.stereo.proj4.string <- function(f, grid.mapping.name) {
   return(paste("+proj=stere +lat_ts=", lat.ts.att$value, " +lat_0=", lat.0.att$value, " +lon_0=", lon.0.att$value, " +x_0=", x.0.att$value, " +y_0=", y.0.att$value, " +k_0=1", sep=""))
 }
 
-## This is basically a dirty hack to make NARCCAP's RCM3 data come in cleanly.
 nc.get.rotated.pole.proj4.string <- function(f, grid.mapping.name) {
   lat.0.att <- ncatt_get(f, grid.mapping.name, "north_pole_latitude")
   lon.0.att <- ncatt_get(f, grid.mapping.name, "north_pole_longitude")
@@ -789,8 +867,8 @@ nc.get.rotated.pole.proj4.string <- function(f, grid.mapping.name) {
   }
   stopifnot(lat.0.att$hasatt & lon.0.att$hasatt)
 
-  ## "+proj=somerc +lat_0=47.5 +y_0=3150000.0 +x_0=3900000.0 +lon_0=-97.0 +a=6371229.0 +b=6371229.0 +units=m"
-  return(paste("+proj=somerc +lat_0=", lat.0.att$value, " +lon_0=", 180 - lon.0.att$value, " +y_0=3150000.0 +x_0=3900000.0 +a=6371229.0 +b=6371229.0 +units=m", sep=""))
+  ## The more or less direct way here is to generate an inverse projection by feeding the values directly in as o_lon_p and o_lat_p; this is to generate a normal, forward projection.
+  return(paste("+proj=ob_tran +o_proj=latlon +lon_0=", normalize180(lon.0.att$value + 180), " +o_lat_p=", lat.0.att$value, " +a=1 +to_meter=0.0174532925199 +no_defs", sep=""))
 }
 
 nc.get.lambert.conformal.conic.proj4.string <- function(f, grid.mapping.name) {
@@ -823,14 +901,19 @@ nc.get.transverse.mercator.proj4.string <- function(f, grid.mapping.name) {
 #'
 #' Gets the proj4 string for a file
 #'
-#' Given a file and a variable, attempts to determine what the proj4 string for the given file should be. If no projection data is found, returns an empty string.
+#' Given a file and a variable, attempts to determine what the proj4 string for the given file should be. If no projection data is found, returns an empty string. Currently supports Lambert Conformal Conic, Transverse Mercator, Polar Sterographic, and Rotated Pole projections.
 #'
 #' @param f The file (an object of class \code{ncdf4})
 #' @param v The name of a variable
 #' @return A string containing the proj4 string
 #'
 #' @examples
-#' ## FIXME
+#' ## Get the proj4 string for a hypothetical file.
+#' \dontrun{
+#' f <- nc_open("pr.nc")
+#' proj4.string <- nc.get.proj4.string(f, "pr")
+#' nc_close(f)
+#' }
 #'
 #' @export
 nc.get.proj4.string <- function(f, v) {
