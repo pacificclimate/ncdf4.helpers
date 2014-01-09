@@ -112,6 +112,7 @@ nc.put.subset.recursive <- function(chunked.axes.indices, f, v, dat, starts, cou
 #'
 #' @param f An object of class \code{ncdf4} which represents a NetCDF file.
 #' @param v A string naming a variable in a file or an object of class \code{ncvar4}.
+#' @param dat The data to put in the file.
 #' @param axis.indices A list consisting of zero or more vectors of indices, named by which axis they refer to (X, Y, T, etc).
 #' @param axes.map An optional vector mapping axes to NetCDF dimensions. If not supplied, it will be generated from the file.
 #' @param input.axes An optional vector containing the input axis map. If supplied, it will be used to permute the data from the axis order in the input data, to the axis order in the output data.
@@ -308,6 +309,7 @@ nc.match.xy <- function(f.desired, f.source, v.desired, v.source, dat) {
 #' @param v.dest The destination variable: a string naming a variable in a file or an object of class \code{ncvar4}.
 #' @param exception.list A vector containing names of variables not to be copied.
 #' @param rename.mapping A vector containing named values mapping source to destination names.
+#' @param definemode Whether the file is already in define mode.
 #'
 #' @examples
 #' ## Copy attributes from one variable to another; but don't copy units or
@@ -657,7 +659,7 @@ nc.get.compress.dims <- function(f, v) {
 #' Given supplied data and optionally a tolerance level, determine if the dimension is regular or not.
 #'
 #' @param d The data to be tested
-#' @param tolerence The tolerance for variation in step size.
+#' @param tolerance The tolerance for variation in step size.
 #' @return TRUE if the data is regular; FALSE if not.
 #'
 #' @examples
@@ -700,9 +702,6 @@ nc.get.time.multiplier <- function(x) {
 #' This function returns time data for a file as PCICt, doing all necessary conversions.
 #'
 #' @param f The file (an object of class \code{ncdf4})
-#' @param filename.date.parsing Whether to attempt to parse dates out of filenames
-#' @param hadley.hack Specific hack for idiots who use 2-digit years for the time:units field
-#' @param cdo.hack Enable workaround to get around CDO's habit of breaking the time axis by not changing time:units when it changes the effective calendar
 #' @param correct.for.gregorian.julian Specific workaround for Gregorian-Julian calendar transitions in non-proleptic Gregorian calendars
 #' @param return.bounds Whether to return the time bounds as an additional attribute
 #' @return A vector of PCICt objects, optionally with bounds
@@ -796,7 +795,7 @@ nc.get.time.series <- function(f, correct.for.gregorian.julian=FALSE, return.bou
 #' ts <- as.PCICt(c("1961-01-15", "1961-02-15", "1961-03-15"), cal="360")
 #' ts.bounds <- nc.make.time.bounds(ts, unit="month")
 #'
-#1 @export
+#' @export
 nc.make.time.bounds <- function(ts, unit=c("year", "month")) {
   unit <- match.arg(unit)
   multiplier <- switch(unit, year=1, month=12)
