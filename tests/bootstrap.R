@@ -1,5 +1,3 @@
-load("exemplar_data.rda")
-
 if(require("RUnit", quietly=TRUE)) {
   ## Run all the tests
   wd <- getwd()
