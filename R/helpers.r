@@ -535,7 +535,6 @@ nc.get.dim.axes.from.names <- function(f, v, dim.names) {
   return(sapply(dim.names, function(x, y) { ifelse(any(x == names(y)), y[x == names(y)], NA) }, c("lat"="Y", "latitude"="Y", "lon"="X", "longitude"="X", "xc"="X", "yc"="Y", "x"="X", "y"="Y", "time"="T", "timeofyear"="T", "plev"="Z", "lev"="Z", "level"="Z")))
 }
 
-## FIXME: What is the point of this function?
 #' Get a list of dimension variables and axes for a variable's coordinate variable
 #' 
 #' Get a list of dimension variables and axes for a variable's coordinate variable
@@ -572,11 +571,11 @@ nc.get.coordinate.axes <- function(f, v) {
 #' 
 #' Get dimension axes for the given variable
 #'
-#' This function returns the dimension axes for a given variable as a named character vector; the names are the names of the corresponding dimensions.
+#' This function returns the dimension axes for a given variable as a named character vector; the names are the names of the corresponding dimensions. If no variable is supplied, the function will return data for all dimensions found in the file.
 #'
 #' Axes are X, Y, Z (depth, plev, etc), T (time), and S (space, for reduced grids).
 #'
-#' Some inferences may be made if there is no 'axis' attribute on one or more dimension variables.
+#' This routine will attempt to infer axes for dimensions if no 'axis' attribute is found on a dimension variable, using the nc.get.dim.axes.from.names function.
 #'
 #' @param f The file (an object of class \code{ncdf4})
 #' @param v The name of a variable
@@ -605,7 +604,7 @@ nc.get.dim.axes <- function(f, v, dim.names) {
   has.dim.no.data <- function(x) { !is.null(f$dim[[x]]) && !is.null(f$dim[[x]]$create_dimvar) && !f$dim[[x]]$create_dimvar }
   
   dim.axes <- sapply(dim.names, function(x) { if(has.dim.no.data(x)) return(NA); a <- ncatt_get(f, x, "axis"); return(ifelse(a$hasatt, toupper(a$value), NA)) })
-  contains.compress.att <- sapply(dim.names, function(x) { ifelse(has.dim.no.data(x) || !is.null(f$var[[x]]), ncatt_get(f, x, "compress")$hasatt, FALSE) })
+  contains.compress.att <- sapply(dim.names, function(x) { ifelse(has.dim.no.data(x) || is.null(f$var[[x]]), FALSE, ncatt_get(f, x, "compress")$hasatt) })
 
   ## Fill in dim axes best we can if axis attributes are missing
   if(any(is.na(dim.axes)))
@@ -701,7 +700,11 @@ nc.get.time.multiplier <- function(x) {
 #'
 #' This function returns time data for a file as PCICt, doing all necessary conversions.
 #'
+#' @note If the file was opened with \code{readunlim=FALSE}, it will read in the time values from the file; otherwise, it will retrieve the time values from the \code{ncdf4} class' data structures.
+#'
 #' @param f The file (an object of class \code{ncdf4})
+#' @param v Optionally, the variable to look for a time dimension on.
+#' @param time.dim.name Optionally, the time dimension name.
 #' @param correct.for.gregorian.julian Specific workaround for Gregorian-Julian calendar transitions in non-proleptic Gregorian calendars
 #' @param return.bounds Whether to return the time bounds as an additional attribute
 #' @return A vector of PCICt objects, optionally with bounds
@@ -715,22 +718,38 @@ nc.get.time.multiplier <- function(x) {
 #' }
 #'
 #' @export
-nc.get.time.series <- function(f, correct.for.gregorian.julian=FALSE, return.bounds=FALSE) {
-  ## FIXME: Identify dim by axis here...
-  time.var.name <- "time"
-  if(!(time.var.name %in% names(f$dim)) || !f$dim$time$create_dimvar)
-    return(NA)
+nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian=FALSE, return.bounds=FALSE) {
+  ## If the time dim wasn't supplied, go find it.
+  if(missing(time.dim.name)) {
+    if(missing(v))
+      dim.axes <- nc.get.dim.axes(f)
+    else
+      dim.axes <- nc.get.dim.axes(f, v)
+    
+    num.T.axes <- sum(dim.axes == "T", na.rm=TRUE)
+    if(num.T.axes == 0)
+      return(NA)
+    else if(num.T.axes > 1)
+      stop("More than one time axis found; please specify a variable or provide a name for the time axis.")
 
-  ## Hack to get around missing time axis on anomaly fields
+    time.dim.name <- names(dim.axes[dim.axes == "T" & !is.na(dim.axes)])
+  }
+
+  if(!(time.dim.name %in% names(f$dim)))
+    stop(paste("Couldn't find dimension '", time.dim.name, "' in file.", sep=""))
+
+  if(!f$dim[[time.dim.name]]$create_dimvar)
+    stop(paste("Couldn't find dimension variable for dim '", time.dim.name, "' in file.", sep=""))
+
   if(f$dim$time$len == 0) {
     return(NA)
   }
 
   time.units <- f$dim$time$units
   time.split <- strsplit(f$dim$time$units, " ")[[1]]
-  time.unit <- time.split[1]
+  time.res <- time.split[1]
 
-  time.calendar.att <- ncatt_get(f, time.var.name, "calendar")
+  time.calendar.att <- ncatt_get(f, time.dim.name, "calendar")
   if(time.split[2] == "as") {
     ## This is to deal with retarded date formats which use format specifiers that aren't valid.
     return(as.PCICt(as.character(f$dim$time$vals), cal=ifelse(time.calendar.att$hasatt, time.calendar.att$value, "gregorian"), format=strsplit(time.split[3], "\\.")[[1]][1]))
@@ -750,12 +769,12 @@ nc.get.time.series <- function(f, correct.for.gregorian.julian=FALSE, return.bou
     
     time.origin <- as.PCICt(time.origin.string, cal=cal)
     
-    time.multiplier <- nc.get.time.multiplier(time.unit)
+    time.multiplier <- nc.get.time.multiplier(time.res)
 
     ## Bounds processing
     bounds.vals <- NULL
     if(return.bounds) {
-      bounds.att <- ncatt_get(f, time.var.name, "bounds")
+      bounds.att <- ncatt_get(f, time.dim.name, "bounds")
       if(bounds.att$hasatt) {
         bounds.vals <- ncvar_get(f, bounds.att$value)
       }
@@ -763,7 +782,7 @@ nc.get.time.series <- function(f, correct.for.gregorian.julian=FALSE, return.bou
         
     time.vals <- f$dim$time$vals
     if(any(is.na(time.vals)))
-      time.vals <- ncvar_get(f, time.var.name)
+      time.vals <- ncvar_get(f, time.dim.name)
 
     ## Correct calendar output if true gregorian
     seconds.per.day <- 86400
