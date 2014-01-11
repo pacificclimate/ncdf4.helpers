@@ -503,9 +503,11 @@ nc.get.variable.list <- function(f, min.dims=1) {
 #'
 #' @export
 nc.get.dim.names <- function(f, v) {
-  if(missing(v))
-    return(unlist(lapply(f$dim, function(x) { return(x$name) })))
-  else
+  if(missing(v)) {
+    d <- unlist(lapply(f$dim, function(x) { return(x$name) }))
+    names(d) <- NULL
+    return(d)
+  } else
     return(unlist(lapply(f$var[[v]]$dim, function(x) { return(x$name) })))
 }
 
@@ -586,7 +588,10 @@ nc.get.coordinate.axes <- function(f, v) {
 #' ## Get dimension axes from file.
 #' \dontrun{
 #' f <- nc_open("pr.nc")
+#' ## Get dim axes for a specified variable
 #' dim.axes <- nc.get.dim.axes(f, "pr")
+#' ## Get all dim axes in file
+#' dim.axes <- nc.get.dim.axes(f)
 #' nc_close(f)
 #' }
 #'
@@ -642,6 +647,8 @@ nc.get.dim.axes <- function(f, v, dim.names) {
 nc.get.compress.dims <- function(f, v) {
   dim.names <- nc.get.dim.names(f, v)
   dim.axes <- nc.get.dim.axes(f, v)
+  if(sum(dim.axes == "S", na.rm=TRUE) == 0)
+    return(list())
   compress.att <- ncatt_get(f, dim.names[dim.axes == "S"], "compress")
   compress.axes <- strsplit(compress.att$value, " ")[[1]]
   stopifnot(length(compress.axes) == 2)
@@ -723,8 +730,11 @@ nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian
   if(missing(time.dim.name)) {
     if(missing(v))
       dim.axes <- nc.get.dim.axes(f)
-    else
+    else {
+      if(!(v %in% names(f$var)))
+        stop(paste("Variable '", v, "' not found in file.", sep=""))
       dim.axes <- nc.get.dim.axes(f, v)
+    }
     
     num.T.axes <- sum(dim.axes == "T", na.rm=TRUE)
     if(num.T.axes == 0)
@@ -771,15 +781,6 @@ nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian
     
     time.multiplier <- nc.get.time.multiplier(time.res)
 
-    ## Bounds processing
-    bounds.vals <- NULL
-    if(return.bounds) {
-      bounds.att <- ncatt_get(f, time.dim.name, "bounds")
-      if(bounds.att$hasatt) {
-        bounds.vals <- ncvar_get(f, bounds.att$value)
-      }
-    }
-        
     time.vals <- f$dim$time$vals
     if(any(is.na(time.vals)))
       time.vals <- ncvar_get(f, time.dim.name)
@@ -795,8 +796,17 @@ nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian
       diff.days[x$year > 1582 | (x$year == 1582 & (x$mon > 10 | (x$mon == 10 & x$day >= 4))) ] <- 0
       julian.correction <- diff.days * seconds.per.day
     }
-    
-    return(structure(time.origin + julian.correction + (time.vals * time.multiplier), bounds=time.origin + (bounds.vals * time.multiplier)))
+
+    ## Bounds processing
+    bounds.vals <- NULL
+    if(return.bounds) {
+      bounds.att <- ncatt_get(f, time.dim.name, "bounds")
+      if(bounds.att$hasatt) {
+        bounds.vals <- ncvar_get(f, bounds.att$value)
+      }
+    }
+
+    return(if(return.bounds) structure(time.origin + julian.correction + (time.vals * time.multiplier), bounds=time.origin + (bounds.vals * time.multiplier)) else structure(time.origin + julian.correction + (time.vals * time.multiplier)))
   }
 }
 
@@ -808,7 +818,7 @@ nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian
 #'
 #' @param ts The time values, of type \code{PCICt}
 #' @param unit The units to be used.
-#' @return 2-dimensional bounds array for the time values.
+#' @return 2-dimensional bounds array for the time values with dimensions [length(ts), 2].
 #'
 #' @examples
 #' ts <- as.PCICt(c("1961-01-15", "1961-02-15", "1961-03-15"), cal="360")
@@ -826,7 +836,7 @@ nc.make.time.bounds <- function(ts, unit=c("year", "month")) {
   padded.length <- length(padded.dates)
   bounds <- c(padded.dates[1:(padded.length - 1)], padded.dates[2:padded.length] - 86400)
   dim(bounds) <- c(padded.length - 1, 2)
-  bounds
+  t(bounds)
 }
 
 ##nc.apply <- function(var, margin, fun, nc.file, chunk.size.mb=1000, ...) {

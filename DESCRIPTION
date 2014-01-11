@@ -11,7 +11,8 @@ Depends:
     PCICt,
     abind
 Suggests:
-    RUnit
+    RUnit,
+    proj4
 Description: This package contains a collection of helper functions for dealing
     with NetCDF files opened using ncdf4.
 License: LGPL-2.1

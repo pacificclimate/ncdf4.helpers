@@ -1,4 +1,7 @@
 if(require("RUnit", quietly=TRUE)) {
+  library(ncdf4.helpers)
+  library(proj4)
+
   ## Run all the tests
   wd <- getwd()
   testsuite <- defineTestSuite("ncdf4.helpers", dirs=wd, testFileRegexp = "^test_.+.R$", testFuncRegexp = "^ncdf4.helpers.test.+")
