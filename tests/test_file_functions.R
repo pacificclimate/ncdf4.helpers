@@ -115,7 +115,7 @@ ncdf4.helpers.test.nc.get.var.subset.by.axes <- function() {
   nc_close(f)
 }
 
-## Tests nc.put.var.subset.by.axes, nc.match.xy, nc.copy.atts
+## Tests nc.put.var.subset.by.axes, nc.conform.data, nc.copy.atts
 ncdf4.helpers.test.write.functions <- function() {
   filename <- tempfile()
   f.in <- nc_open("test1.nc")
@@ -143,5 +143,3 @@ ncdf4.helpers.test.write.functions <- function() {
 
   unlink(filename)
 }
-
-## FIXME: Add tests for put / copy / etc functions.
