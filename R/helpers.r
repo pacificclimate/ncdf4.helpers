@@ -135,7 +135,7 @@ nc.put.var.subset.by.axes <- function(f, v, dat, axis.indices, axes.map=NULL, in
     return(c())
 
   ## Permute data to match order within file...
-  if(input.axes != NULL) {
+  if(!is.null(input.axes)) {
     stopifnot(length(dim(dat)) == length(input.axes))
     stopifnot(length(input.axes) == length(axes.map))
     o.axes <- order(axes.map)
@@ -241,17 +241,18 @@ nc.get.var.subset.by.axes <- function(f, v, axis.indices, axes.map=NULL) {
   return(nc.get.subset.recursive(chunked.axes.indices, f, v, starts, counts, axes.map))
 }
 
-#' Reorder data so that X and Y axes match.
+#' Conform data to dimension order and structure of output
 #'
-#' Reorder data so that X and Y axes match.
+#' Conform data to dimension order and structure of output
 #'
-#' This function will take a given current file, variable, and 3D slab of data and permute the data along the X and Y axes such that it matches the order of the data in the desired file and variable.
+#' This function will take a given input file, variable, and slab of data and permute the data such that the dimension order and the data order matches the order in the output file and variable.
 #'
-#' @param f.desired The desired file (an object of class \code{ncdf4})
-#' @param f.source The source file (an object of class \code{ncdf4})
-#' @param v.desired The desired variable: a string naming a variable in a file or an object of class \code{ncvar4}.
-#' @param v.source The source variable: a string naming a variable in a file or an object of class \code{ncvar4}.
-#' @param dat The data to be reordered to match the XY ordering desired.
+#' @param f.input The input file (an object of class \code{ncdf4})
+#' @param f.output The output file (an object of class \code{ncdf4})
+#' @param v.input The input variable: a string naming a variable in a file or an object of class \code{ncvar4}.
+#' @param v.output The output variable: a string naming a variable in a file or an object of class \code{ncvar4}.
+#' @param dat.input The input data to be reordered to match the XY ordering desired.
+#' @param allow.dim.subsets Whether to allow the conforming process to subset the data.
 #' @return The data permuted to match the XY ordering desired.
 #'
 #' @examples
@@ -261,36 +262,42 @@ nc.get.var.subset.by.axes <- function(f, v, axis.indices, axes.map=NULL) {
 #' f1 <- nc_open("pr.nc")
 #' f2 <- nc_open("pr2.nc", write=TRUE)
 #' dat <- nc.get.var.subset.by.axes(f1, "pr")
-#' new.dat <- nc.match.xy(f2, f1, "pr", "pr", dat)
+#' new.dat <- nc.conform.data(f2, f1, "pr", "pr", dat)
 #' nc_close(f1)
 #' nc_close(f2)
 #' }
 #'
 #' @export
-nc.match.xy <- function(f.desired, f.source, v.desired, v.source, dat) {
-  ## Permute data to account for upside-down data and other stupid problems that cause
-  ## comparisons to be irrelevant.
-  ## Also subset time...
-  f.desired.axes <- nc.get.dim.axes(f.desired, v.desired)
-  f.source.axes <- nc.get.dim.axes(f.source, v.source)
+nc.conform.data <- function(f.input, f.output, v.input, v.output, dat.input, allow.dim.subsets=FALSE) {
+  f.input.axes <- nc.get.dim.axes(f.input, v.input)
+  f.output.axes <- nc.get.dim.axes(f.output, v.output)
 
-  warning("Poorly tested function. Don't expect everything to work right.")
-  
-  stopifnot(f.desired.axes[1] == f.source.axes[1] && f.desired.axes[2] == f.source.axes[2])
-  
-  x.dim.pcic <- (f.desired$dim[[names(f.desired.axes)[f.desired.axes == "X"]]]$vals + 360) %% 360
-  y.dim.pcic <- f.desired$dim[[names(f.desired.axes)[f.desired.axes == "Y"]]]$vals
-  x.dim.cccma <- (f.source$dim[[names(f.source.axes)[f.source.axes == "X"]]]$vals + 360) %% 360
-  y.dim.cccma <- f.source$dim[[names(f.source.axes)[f.source.axes == "Y"]]]$vals
-  stopifnot(length(x.dim.pcic) == length(x.dim.cccma))
-  stopifnot(length(y.dim.pcic) == length(y.dim.cccma))
-  
-  x.permute <- order(x.dim.cccma)[order(order(x.dim.pcic))]
-  y.permute <- order(y.dim.cccma)[order(order(y.dim.pcic))]
+  if(!all(sort(f.input.axes) == sort(f.output.axes)))
+    stop("Input and output axes don't contain the same components.")
+  if(any(is.na(f.input.axes)) || any(is.na(f.output.axes)))
+    stop("Unidentified axes in input or output.")
 
-  ## FIXME: Shaky assumptions galore here.
-  dim(dat.cccma) <- dim(dat.cccma)[which(f.source.axes %in% f.desired.axes)]
-  dat.cccma[x.permute, y.permute, ]
+  io.permute <- order(f.input.axes)[order(f.output.axes)]
+
+  permute.list <- lapply(f.output.axes, function(ax) {
+    ax.vals.input <- f.input$dim[[names(f.input.axes)[f.input.axes == ax]]]$vals
+    ax.vals.output <- f.output$dim[[names(f.output.axes)[f.output.axes == ax]]]$vals
+
+    if(ax == 'X' && f.input$dim[[names(f.input.axes)[f.input.axes == ax]]]$units == "degrees_east") {
+      ax.vals.input <- (ax.vals.input + 360) %% 360
+      ax.vals.output <- (ax.vals.output + 360) %% 360
+    }
+
+    if(length(ax.vals.input) < length(ax.vals.output))
+      stop(paste(ax, "dimension: Output dimension cannot be longer than input dimension."))
+    
+    if(length(ax.vals.input) > length(ax.vals.output) && !allow.dim.subsets)
+      stop(paste(ax, "dimension: Input dimension cannot be longer than output dimension without allow.dim.subsets ."))
+    
+    return(na.omit(order(ax.vals.input)[order(ax.vals.output)]))
+  })
+
+  return(do.call("[", c(list(aperm(dat.input, perm=io.permute)), permute.list)))
 }
   
 #' Copy attributes from one variable in one file to another file.

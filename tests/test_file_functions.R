@@ -115,4 +115,32 @@ ncdf4.helpers.test.nc.get.var.subset.by.axes <- function() {
   nc_close(f)
 }
 
+## Tests nc.put.var.subset.by.axes, nc.match.xy, nc.copy.atts
+ncdf4.helpers.test.write.functions <- function() {
+  filename <- tempfile()
+  f.in <- nc_open("test1.nc")
+  dat <- nc.get.var.subset.by.axes(f.in, "tasmax", list(X=1:4, Y=c(1, 3, 5)))
+  x.dim <- ncdim_def("rlon", "degrees", vals=f.in$dim$rlon$vals[c(3:4, 1:2)])
+  y.dim <- ncdim_def("rlat", "degrees", vals=f.in$dim$rlat$vals[c(1, 3, 5)])
+  t.dim <- ncdim_def("time", "days since 1949-12-01", vals=f.in$dim$time$vals)
+  var.list <- list(tasmax=ncvar_def("tasmax", "K", list(t.dim, x.dim, y.dim), 1e20, longname="Daily Maximum Near-Surface Air Temperature"))
+  f.out <- nc_create(filename, var.list)
+  nc.copy.atts(f.in, "rlat", f.out, "rlat")
+  nc.copy.atts(f.in, "rlon", f.out, "rlon")
+  nc.copy.atts(f.in, "tasmax", f.out, "tasmax")
+  dat.permuted <- nc.conform.data(f.in, f.out, "tasmax", "tasmax", dat, allow.dim.subsets=TRUE)
+  nc.put.var.subset.by.axes(f.out, "tasmax", dat.permuted, list())
+  nc_close(f.out)
+  f.out <- nc_open(filename)
+
+  dat.out <- nc.get.var.subset.by.axes(f.out, "tasmax", list())
+  checkEquals(as.numeric(dat.out), as.numeric(dat.permuted))
+  checkEquals(dat[1, 2, 3], dat.out[3, 3, 2])
+
+  nc_close(f.in)
+  nc_close(f.out)
+
+  unlink(filename)
+}
+
 ## FIXME: Add tests for put / copy / etc functions.
