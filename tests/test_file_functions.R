@@ -130,6 +130,7 @@ ncdf4.helpers.test.write.functions <- function() {
   nc.copy.atts(f.in, "tasmax", f.out, "tasmax")
   dat.permuted <- nc.conform.data(f.in, f.out, "tasmax", "tasmax", dat, allow.dim.subsets=TRUE)
   nc.put.var.subset.by.axes(f.out, "tasmax", dat.permuted, list())
+  nc_sync(f.out)
   nc_close(f.out)
   f.out <- nc_open(filename)
 
