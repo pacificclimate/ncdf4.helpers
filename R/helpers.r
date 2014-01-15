@@ -4,7 +4,7 @@ library(abind)
 
 #' Get subsets to be distributed to workers
 #'
-#' Get subsets to be distributed to workers
+#' Get subsets to be distributed to workers.
 #'
 #' Given a desired number of values (\code{num.vals}), the sizes of the dimensions (\code{dim.size}), the corresponding axes (\code{dim.axes}), the desired axis to split on (\code{axis.to.split.on}), and optionally the minimum number of chunks to return (\code{min.num.chunks}), returns a list of lists of subsets appropriate to be passed to \code{nc.put.var.subsets.by.axes} or \code{nc.get.var.subsets.by.axes}.
 #'
@@ -47,18 +47,20 @@ get.cluster.worker.subsets <- function(num.vals, dim.size, dim.axes, axis.to.spl
   }))
 }
 
-#' Splits up a CMIP5 filename.
+#' Splits up a CMIP5 filename
 #'
 #' Splits up a CMIP5 filename into its component parts.
 #'
-#' This function splits up a given CMIP5 filename, returning a named vector consisting of the descriptive parts of the filename.
+#' As the CMIP5 conventions define the format of filenames, quite a bit of data can be extracted from the filename alone. This function makes that process easier by splitting up the given CMIP5 filename, returning a named vector consisting of the variable, time resolution, model, emissions scenario, run, time range, and time start and end.
 #'
 #' @param cmip5.file The filename to be split.
 #' @return A vector containing the variable (var), time resolution (tres), model (model), emissions scenario (emissions), run (run), time range (trange), time start (tstart) and time end (tend) for the file.
 #'
+#' @references \url{http://cmip-pcmdi.llnl.gov/cmip5/docs/CMIP5_output_metadata_requirements.pdf}
 #' @examples
 #' ## Split up filename into component bits
-#' split.bits <- get.split.filename.cmip5("pr/pr_day_MRI-CGCM3_historical_r1i1p1_18500101-20051231.nc")
+#' split.bits <- get.split.filename.cmip5(
+#'                 "pr/pr_day_MRI-CGCM3_historical_r1i1p1_18500101-20051231.nc")
 #' 
 #' @export
 get.split.filename.cmip5 <- function(cmip5.file) {
@@ -103,8 +105,7 @@ nc.put.subset.recursive <- function(chunked.axes.indices, f, v, dat, starts, cou
   }
 }
 
-## WARNING: Code is not fully tested.
-#' Puts a data subset in the place described by the named list of axes.
+#' Puts a data subset in the place described by the named list of axes
 #'
 #' Puts a data subset in the place described by the named list of axes.
 #'
@@ -117,6 +118,7 @@ nc.put.subset.recursive <- function(chunked.axes.indices, f, v, dat, starts, cou
 #' @param axes.map An optional vector mapping axes to NetCDF dimensions. If not supplied, it will be generated from the file.
 #' @param input.axes An optional vector containing the input axis map. If supplied, it will be used to permute the data from the axis order in the input data, to the axis order in the output data.
 #'
+#' @seealso \code{\link{ncdf4.helpers-package}}
 #' @examples
 #' ## Copy a subset of the data from one location to another.
 #' \dontrun{
@@ -192,10 +194,8 @@ nc.get.subset.recursive <- function(chunked.axes.indices, f, v, starts, counts, 
 }
 
 ## Why not just have a NetCDF -class- that implements a subset operator that does the actual fetching?
-## WARNING: Code is not fully tested.
-## FIXME: This should return the axis ordering as an attribute (or something)
 ## FIXME: Add a drop option to be able to replicate R's (albeit stupid) behaviour of dropping 1 length dims.
-#' Gets a data subset in the place described by the named list of axes.
+#' Gets a data subset in the place described by the named list of axes
 #'
 #' Gets a data subset in the place described by the named list of axes.
 #'
@@ -206,6 +206,7 @@ nc.get.subset.recursive <- function(chunked.axes.indices, f, v, starts, counts, 
 #' @param axis.indices A list consisting of zero or more vectors of indices, named by which axis they refer to (X, Y, T, etc).
 #' @param axes.map An optional vector mapping axes to NetCDF dimensions. If not supplied, it will be generated from the file.
 #'
+#' @seealso \code{\link{ncdf4.helpers-package}}
 #' @examples
 #' ## Get a subset of the data.
 #' \dontrun{
@@ -243,21 +244,22 @@ nc.get.var.subset.by.axes <- function(f, v, axis.indices, axes.map=NULL) {
 
 #' Conform data to dimension order and structure of output
 #'
-#' Conform data to dimension order and structure of output
+#' Conform data to dimension order and structure of output.
 #'
-#' This function will take a given input file, variable, and slab of data and permute the data such that the dimension order and the data order matches the order in the output file and variable.
+#' Sometimes files come in in different latitude (up is north, up is south), longitude (0 to 360 vs -180 to 180), and temporal schemes. The purpose of this function is to make data from one scheme comparable to data from another. It takes a given input file, variable, and slab of data and permutes the data such that the dimension order and the index order matches the order in the output file and variable.
 #'
 #' @param f.input The input file (an object of class \code{ncdf4})
 #' @param f.output The output file (an object of class \code{ncdf4})
-#' @param v.input The input variable: a string naming a variable in a file or an object of class \code{ncvar4}.
-#' @param v.output The output variable: a string naming a variable in a file or an object of class \code{ncvar4}.
-#' @param dat.input The input data to be reordered to match the XY ordering desired.
+#' @param v.input The input variable (a string naming a variable in a file or an object of class \code{ncvar4}).
+#' @param v.output The output variable (a string naming a variable in a file or an object of class \code{ncvar4}).
+#' @param dat.input The input data to be reordered to match the output file's ordering.
 #' @param allow.dim.subsets Whether to allow the conforming process to subset the data.
-#' @return The data permuted to match the XY ordering desired.
+#' @return The data permuted to match the output file's ordering and optionally clipped to the extent of the output.
 #'
+#' @note This function currently isn't useful for conforming subsets of output data.
+#' 
 #' @examples
-#' ## Copy attributes from one variable to another; but don't copy units or
-#' ## standard_name, and copy long_name as old_long_name.
+#' ## Get data from one file and conform it to the dimension order of another.
 #' \dontrun{
 #' f1 <- nc_open("pr.nc")
 #' f2 <- nc_open("pr2.nc", write=TRUE)
@@ -300,7 +302,7 @@ nc.conform.data <- function(f.input, f.output, v.input, v.output, dat.input, all
   return(do.call("[", c(list(aperm(dat.input, perm=io.permute)), permute.list)))
 }
   
-#' Copy attributes from one variable in one file to another file.
+#' Copy attributes from one variable in one file to another file
 #' 
 #' Copy attributes from one variable in one file to another file.
 #'
@@ -353,7 +355,7 @@ nc.copy.atts <- function(f.src, v.src, f.dest, v.dest, exception.list=NULL, rena
 ## Returns the values corresponding to the dimension variable in question
 #' Get dimension corresponding to a given axis
 #'
-#' Get dimension corresponding to a given axis
+#' Get dimension corresponding to a given axis.
 #'
 #' This function returns the dimension (of class 'ncdim4') corresponding to the specified axis (X, Y, Z, T, or S).
 #'
@@ -388,11 +390,12 @@ nc.get.dim.for.axis <- function(f, v, axis) {
 #' 
 #' Get a list of names of dimension bounds variables.
 #'
-#' This function returns the names of any dimension bounds variables found in a file.
+#' Many dimension variables are not single points, but in fact represent a range along the axis. This is expressed by associated dimension bounds variables. This function returns the names of any dimension bounds variables found in a file.
 #'
 #' @param f The file (an object of class \code{ncdf4})
 #' @return A character vector naming all of the dimension bounds variables found.
 #'
+#' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch07.html#cell-boundaries}
 #' @examples
 #' ## Get list of dimension bound variables
 #' \dontrun{
@@ -422,20 +425,21 @@ nc.get.dim.bounds.var.list <- function(f) {
 }
 
 ## Returns a list of climatology bounds variables.
-#' Get a list of names of climatology bounds variables.
+#' Get a list of names of climatology bounds variables
 #' 
 #' Get a list of names of climatology bounds variables.
 #'
-#' This function returns the names of any climatology bounds variables found in a file.
+#' The CF metadata convention defines a \code{climatology} attribute which can be applied to a time axis to indicate that the data is climatological in nature; the value of this attribute is the name of another variable in the file which defines the bounds of each climatological time period. This function returns the names of any climatology bounds variables found in a file.
 #'
 #' @param f The file (an object of class \code{ncdf4})
 #' @return A character vector naming all of the climatology bounds variables found.
 #'
+#' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch07s04.html}
 #' @examples
 #' ## Get list of climatology bounds variables
 #' \dontrun{
 #' f <- nc_open("pr.nc")
-#' dim.axes <- nc.get.climatology.bounds.var.list(f)
+#' clim.bounds <- nc.get.climatology.bounds.var.list(f)
 #' nc_close(f)
 #' }
 #'
@@ -454,7 +458,7 @@ nc.get.climatology.bounds.var.list <- function(f) {
 }
 
 ## Returns a list of strings corresponding to actual variables in files (not lat/lon/etc).
-#' Get a list of names of data variables.
+#' Get a list of names of data variables
 #' 
 #' Get a list of names of data variables.
 #'
@@ -490,7 +494,7 @@ nc.get.variable.list <- function(f, min.dims=1) {
   return(var.list[var.mask])
 }
 
-#' Get a list of names of dimensions.
+#' Get a list of names of dimensions
 #' 
 #' Get a list of names of dimensions.
 #'
@@ -518,7 +522,7 @@ nc.get.dim.names <- function(f, v) {
     return(unlist(lapply(f$var[[v]]$dim, function(x) { return(x$name) })))
 }
 
-#' Infer dimension axes from names of dimensions.
+#' Infer dimension axes from names of dimensions
 #' 
 #' Infer dimension axes from names of dimensions.
 #'
@@ -546,14 +550,15 @@ nc.get.dim.axes.from.names <- function(f, v, dim.names) {
 
 #' Get a list of dimension variables and axes for a variable's coordinate variable
 #' 
-#' Get a list of dimension variables and axes for a variable's coordinate variable
+#' Get a list of dimension variables and axes for a variable's coordinate variable.
 #'
-#' This function returns a named list of axes, the names of which are the associated dimension variables.
+#' The CF metadata standard defines a convention for definining 2-dimensional variables to accompany pairs of dimension variables. Usually these are latitude and longitude variables, and accompany projected grids. This function returns a named list of axes, the names of which are the associated dimension variables.
 #'
 #' @param f The file (an object of class \code{ncdf4})
 #' @param v The name of a variable
 #' @return A named character vector containing axes, the names of which are the corresponding dimension variables.
 #'
+#' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch05s02.html}
 #' @examples
 #' ## Get coordinate axes from file.
 #' \dontrun{
@@ -578,7 +583,7 @@ nc.get.coordinate.axes <- function(f, v) {
 ## Axes are X, Y, Z (depth, plev, etc), T (time), and S (space, for reduced grids)
 #' Get dimension axes
 #' 
-#' Get dimension axes for the given variable
+#' Get dimension axes for the given variable.
 #'
 #' This function returns the dimension axes for a given variable as a named character vector; the names are the names of the corresponding dimensions. If no variable is supplied, the function will return data for all dimensions found in the file.
 #'
@@ -632,16 +637,17 @@ nc.get.dim.axes <- function(f, v, dim.names) {
 }
 
 ## Returns the dimensions used by the compressed axis
-#' Get X and Y dimension variables for reduced (compressed) grids.
+#' Get X and Y dimension variables for reduced (compressed) grids
 #' 
 #' Get X and Y dimension variables for reduced (compressed) grids.
 #'
-#' This function retrieves the X and Y dimensions for reduced (compressed) grids, returning a list containing the X and Y dimensions.
+#' The CF metadata convention defines a method for implementing reduced grids (grids missing pieces of themselves); they call this compression by gathering. This function retrieves the X and Y dimensions for reduced (compressed) grids, returning a list containing the X and Y dimensions.
 #'
 #' @param f The file (an object of class \code{ncdf4})
 #' @param v The name of a variable
 #' @return A list consisting of two members of class \code{ncdim4}: x.dim for the X axis, and y.dim for the Y axis.
 #'
+#' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch05s03.html}
 #' @examples
 #' ## Get compress dimensions from file.
 #' \dontrun{
@@ -667,12 +673,12 @@ nc.get.compress.dims <- function(f, v) {
 ## Tolerance is as a fraction
 #' Determine if a dimension is regular
 #' 
-#' Determine if a dimension is regular
+#' Determine if a dimension is regular (evenly spaced).
 #' 
-#' Given supplied data and optionally a tolerance level, determine if the dimension is regular or not.
+#' Not all dimensions or data are regular (evenly spaced). This function will, given data and optionally a tolerance level, determine if the dimension is regular or not.
 #'
 #' @param d The data to be tested
-#' @param tolerance The tolerance for variation in step size.
+#' @param tolerance The tolerance for variation in step size, as a fraction of the step size.
 #' @return TRUE if the data is regular; FALSE if not.
 #'
 #' @examples
@@ -689,11 +695,13 @@ nc.is.regular.dimension <- function(d, tolerance=0.000001) {
   return(abs((get.f.step.size(d, min) / get.f.step.size(d, max)) - 1) < tolerance)
 }
 
-#' Gets multiplier for time scale given units
+#' Gets conversion factor for time scale given units
 #' 
-#' Gets multiplier for time scale given units
+#' Gets conversion factor for time scale given units.
 #'
-#' Given supplied units (days, hours, etc) returns a multiplier to convert the units into seconds.
+#' This function returns a conversion factor from the supplied time scale (days, hours, minutes, months) to seconds. This can be used to convert to/from "(days or hours) since X" style dates.
+#' 
+#' @note The conversion factor for months is approximate.
 #'
 #' @param x The time scale
 #' @return A numeric conversion factor to convert to seconds.
@@ -707,12 +715,11 @@ nc.get.time.multiplier <- function(x) {
   return(switch(x, "days"=86400, "hours"=3600, "minutes"=60, "months"=86400 * 30))
 }
 
-## Returns the time series as PCICt
 #' Returns time axis data as PCICt for a file
 #'
-#' Returns time axis data as PCICt for a file
+#' Returns time axis data as PCICt for a file.
 #'
-#' This function returns time data for a file as PCICt, doing all necessary conversions.
+#' Retrieving time data from a NetCDF file in an intelligible format is a non-trivial problem. The \code{PCICt} package solves part of this problem by allowing for 365- and 360-day calendars. This function complements it by returns time data for a file as \code{PCICt}, doing all necessary conversions.
 #'
 #' @note If the file was opened with \code{readunlim=FALSE}, it will read in the time values from the file; otherwise, it will retrieve the time values from the \code{ncdf4} class' data structures.
 #'
@@ -723,6 +730,7 @@ nc.get.time.multiplier <- function(x) {
 #' @param return.bounds Whether to return the time bounds as an additional attribute
 #' @return A vector of PCICt objects, optionally with bounds
 #'
+#' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch04s04.html}
 #' @examples
 #' ## Get time series from file
 #' \dontrun{
@@ -819,14 +827,15 @@ nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian
 
 #' Creates time bounds for a time series
 #'
-#' Creates time bounds for a time series
+#' Creates time bounds for a time series.
 #'
-#' Given a time series of PCICt, returns a set of bounds for that time series based the supplied units.
+#' When aggregating data along the time axis, it is occasionally useful to be able to generate bounds for that data. This function will, given a time series of PCICt, returns a set of bounds for that time series based the supplied units.
 #'
 #' @param ts The time values, of type \code{PCICt}
 #' @param unit The units to be used.
 #' @return 2-dimensional bounds array for the time values with dimensions [length(ts), 2].
 #'
+#' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch07s04.html}
 #' @examples
 #' ts <- as.PCICt(c("1961-01-15", "1961-02-15", "1961-03-15"), cal="360")
 #' ts.bounds <- nc.make.time.bounds(ts, unit="month")
@@ -853,9 +862,9 @@ nc.make.time.bounds <- function(ts, unit=c("year", "month")) {
 
 #' Get step size for data
 #'
-#' Get step size for data
+#' Get step size for data.
 #'
-#' Gets the step size for data, aggregated by the supplied function.
+#' Gets the step size for data, aggregated by the supplied function. This is useful when you want to know the mean timestep size, median, minimum, range, etc for the purposes of classifying data by time resolution.
 #'
 #' @param d The data to have the step size determined
 #' @param f The function to aggregate the step size
@@ -863,7 +872,9 @@ nc.make.time.bounds <- function(ts, unit=c("year", "month")) {
 #'
 #' @examples
 #' dat <- c(1, 2, 3, 4, 5, 7)
+#' ## Will be 2
 #' max.step.size <- get.f.step.size(dat, max)
+#' ## Will be 1
 #' min.step.size <- get.f.step.size(dat, min)
 #'
 #' @export
@@ -934,14 +945,17 @@ nc.get.transverse.mercator.proj4.string <- function(f, grid.mapping.name) {
 ## Returns the spatial reference ID of the data set, or WGS84 (4326) if nothing found
 #' Gets the proj4 string for a file
 #'
-#' Gets the proj4 string for a file
+#' Gets the proj4 string for a file.
 #'
-#' Given a file and a variable, attempts to determine what the proj4 string for the given file should be. If no projection data is found, returns an empty string. Currently supports Lambert Conformal Conic, Transverse Mercator, Polar Sterographic, and Rotated Pole projections.
+#' Most NetCDF files are stored without any projection information as a lat-long grid. However, some files -- particularly those from RCMs -- are on a projected grid. This function returns a proj4 string, suitable for use with the 'proj4' library, which can be used to perform forward and inverse projections.
+#' 
+#' Given a file and a variable, this function returns the proj4 string for the given file should be. If no projection data is found, it returns an empty string. It currently supports Lambert Conformal Conic, Transverse Mercator, Polar Sterographic, and Rotated Pole projections.
 #'
 #' @param f The file (an object of class \code{ncdf4})
 #' @param v The name of a variable
 #' @return A string containing the proj4 string
 #'
+#' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch05s06.html}
 #' @examples
 #' ## Get the proj4 string for a hypothetical file.
 #' \dontrun{
