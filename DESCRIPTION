@@ -1,7 +1,7 @@
 Package: ncdf4.helpers
 Version: 0.3-1
-Date: 2014-01-08
-Title: Helper functions for using the ncdf4 package
+Date: 2014-01-15
+Title: Helper functions for use with the ncdf4 package
 Author: David Bronaugh <bronaugh@uvic.ca> for the Pacific Climate Impacts
     Consortium (PCIC)
 Maintainer: David Bronaugh <bronaugh@uvic.ca>

@@ -1,4 +1,4 @@
-0.3-1: Incorporate documentation, release on CRAN.
+0.3-1: Clean up functions, add tests, incorporate documentation; initial release on CRAN.
 
 0.2-7: Add tolerance to nc.is.regular.dimension.
 
