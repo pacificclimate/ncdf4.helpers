@@ -914,7 +914,7 @@ nc.get.rotated.pole.proj4.string <- function(f, grid.mapping.name) {
   stopifnot(lat.0.att$hasatt & lon.0.att$hasatt)
 
   ## The more or less direct way here is to generate an inverse projection by feeding the values directly in as o_lon_p and o_lat_p; this is to generate a normal, forward projection.
-  return(paste("+proj=ob_tran +o_proj=latlon +lon_0=", normalize180(lon.0.att$value + 180), " +o_lat_p=", lat.0.att$value, " +a=1 +to_meter=0.0174532925199 +no_defs", sep=""))
+  return(paste("+proj=ob_tran +o_proj=longlat +lon_0=", normalize180(lon.0.att$value + 180), " +o_lat_p=", lat.0.att$value, " +a=1 +to_meter=0.0174532925199 +no_defs", sep=""))
 }
 
 nc.get.lambert.conformal.conic.proj4.string <- function(f, grid.mapping.name) {
