@@ -25,7 +25,7 @@ ncdf4.helpers.test.nc.get.time.series <- function() {
 
 ncdf4.helpers.test.nc.get.proj4.string <- function() {
   f <- nc_open("test1.nc", readunlim=FALSE)
-  proj4.string <- "+proj=ob_tran +o_proj=latlon +lon_0=-97 +o_lat_p=42.5 +a=1 +to_meter=0.0174532925199 +no_defs"
+  proj4.string <- "+proj=ob_tran +o_proj=longlat +lon_0=-97 +o_lat_p=42.5 +a=1 +to_meter=0.0174532925199 +no_defs"
   checkEquals(nc.get.proj4.string(f, "tasmax"), proj4.string)
   lat.dat <- ncvar_get(f, "lat")
   lon.dat <- ncvar_get(f, "lon")
