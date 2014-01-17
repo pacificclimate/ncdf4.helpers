@@ -1,7 +1,3 @@
-library(ncdf4)
-library(PCICt)
-library(abind)
-
 #' Get subsets to be distributed to workers
 #'
 #' Get subsets to be distributed to workers.
@@ -75,7 +71,7 @@ get.split.filename.cmip5 <- function(cmip5.file) {
 ## In the case of the put method, the data is assumed to be in the same dimension order as the output file.
 nc.put.subset.recursive <- function(chunked.axes.indices, f, v, dat, starts, counts, axes.map) {
   if(length(chunked.axes.indices) == 0) {
-    res <- ncvar_put(f, v, dat, start=starts, count=counts)
+    res <- ncdf4::ncvar_put(f, v, dat, start=starts, count=counts)
   } else {
     axis.index <- head(chunked.axes.indices, n=1)
     axes.to.pass.on <- tail(chunked.axes.indices, n=-1)
@@ -167,7 +163,7 @@ nc.put.var.subset.by.axes <- function(f, v, dat, axis.indices, axes.map=NULL, in
 
 nc.get.subset.recursive <- function(chunked.axes.indices, f, v, starts, counts, axes.map) {
   if(length(chunked.axes.indices) == 0) {
-    res <- ncvar_get(f, v, start=starts, count=counts, collapse_degen=FALSE)
+    res <- ncdf4::ncvar_get(f, v, start=starts, count=counts, collapse_degen=FALSE)
     ## Work around dwpierce's dropping of 1-dim dims in input.
     res.dim <- counts
     res.dim[counts == -1] <- f$var[[v]]$varsize[counts == -1]
@@ -188,7 +184,7 @@ nc.get.subset.recursive <- function(chunked.axes.indices, f, v, starts, counts, 
         counts[axis.id] <- length(x)
         nc.get.subset.recursive(axes.to.pass.on, f, v, starts, counts, axes.map)
       })
-      do.call(abind, c(res, list(along=which(axes.map == axis.id))))
+      do.call(abind::abind, c(res, list(along=which(axes.map == axis.id))))
     }
   }
 }
@@ -335,20 +331,20 @@ nc.conform.data <- function(f.input, f.output, v.input, v.output, dat.input, all
 #'
 #' @export
 nc.copy.atts <- function(f.src, v.src, f.dest, v.dest, exception.list=NULL, rename.mapping=NULL, definemode=FALSE) {
-  atts <- ncatt_get(f.src, v.src)
+  atts <- ncdf4::ncatt_get(f.src, v.src)
   if(length(atts) > 0) {
     if(!definemode)
-      nc_redef(f.dest)
+      ncdf4::nc_redef(f.dest)
 
     lapply(names(atts), function(x) {
       if(!(x %in% exception.list)) {
         att.name <- if(x %in% names(rename.mapping)) rename.mapping[x] else x
-        ncatt_put(f.dest, v.dest, att.name, atts[[x]], definemode=TRUE)
+        ncdf4::ncatt_put(f.dest, v.dest, att.name, atts[[x]], definemode=TRUE)
       }
     })
 
     if(!definemode)
-      nc_enddef(f.dest)
+      ncdf4::nc_enddef(f.dest)
   }
 }
 
@@ -409,7 +405,7 @@ nc.get.dim.bounds.var.list <- function(f) {
   dimension.vars <- names(f$dim)
   return(unlist(sapply(names(f$dim), function(x) {
     if(f$dim[[x]]$create_dimvar) {
-      a <- ncatt_get(f, x, "bounds");
+      a <- ncdf4::ncatt_get(f, x, "bounds");
       if(a$hasatt)
         return(a$value);
     }
@@ -448,7 +444,7 @@ nc.get.climatology.bounds.var.list <- function(f) {
   dim.list <- names(f$dim)
   is.climatology<- sapply(dim.list, function(x) {
     if(f$dim[[x]]$create_dimvar && f$dim[[x]]$unlim) {
-      a <- ncatt_get(f, x, "climatology")
+      a <- ncdf4::ncatt_get(f, x, "climatology")
       if(a$hasatt)
         return(a$value)
     }
@@ -484,7 +480,7 @@ nc.get.variable.list <- function(f, min.dims=1) {
   enough.dims <- sapply(var.list, function(v) { length(f$var[[v]]$dim) >= min.dims } )
   bounds <- nc.get.dim.bounds.var.list(f)
   climatology.bounds <- nc.get.climatology.bounds.var.list(f)
-  has.axis <- unlist(lapply(var.list, function(x) { a <- ncatt_get(f, x, "axis"); if(a$hasatt & nchar(a$value) == 1) return(x); return(NULL); } ))
+  has.axis <- unlist(lapply(var.list, function(x) { a <- ncdf4::ncatt_get(f, x, "axis"); if(a$hasatt & nchar(a$value) == 1) return(x); return(NULL); } ))
   
   ## When things get really broken, we'll need this...
   bnds.heuristic <- !grepl("_bnds", var.list)
@@ -569,7 +565,7 @@ nc.get.dim.axes.from.names <- function(f, v, dim.names) {
 #'
 #' @export
 nc.get.coordinate.axes <- function(f, v) {
-  coords.att <- ncatt_get(f, v, "coordinates")
+  coords.att <- ncdf4::ncatt_get(f, v, "coordinates")
   if(coords.att$hasatt) {
     split.bits <- strsplit(coords.att$value, " ")[[1]]
     coords.axes <- nc.get.dim.axes(f, dim.names=split.bits)
@@ -620,8 +616,8 @@ nc.get.dim.axes <- function(f, v, dim.names) {
 
   has.dim.no.data <- function(x) { !is.null(f$dim[[x]]) && !is.null(f$dim[[x]]$create_dimvar) && !f$dim[[x]]$create_dimvar }
   
-  dim.axes <- sapply(dim.names, function(x) { if(has.dim.no.data(x)) return(NA); a <- ncatt_get(f, x, "axis"); return(ifelse(a$hasatt, toupper(a$value), NA)) })
-  contains.compress.att <- sapply(dim.names, function(x) { ifelse(has.dim.no.data(x) || is.null(f$var[[x]]), FALSE, ncatt_get(f, x, "compress")$hasatt) })
+  dim.axes <- sapply(dim.names, function(x) { if(has.dim.no.data(x)) return(NA); a <- ncdf4::ncatt_get(f, x, "axis"); return(ifelse(a$hasatt, toupper(a$value), NA)) })
+  contains.compress.att <- sapply(dim.names, function(x) { ifelse(has.dim.no.data(x) || is.null(f$var[[x]]), FALSE, ncdf4::ncatt_get(f, x, "compress")$hasatt) })
 
   ## Fill in dim axes best we can if axis attributes are missing
   if(any(is.na(dim.axes)))
@@ -662,7 +658,7 @@ nc.get.compress.dims <- function(f, v) {
   dim.axes <- nc.get.dim.axes(f, v)
   if(sum(dim.axes == "S", na.rm=TRUE) == 0)
     return(list())
-  compress.att <- ncatt_get(f, dim.names[dim.axes == "S"], "compress")
+  compress.att <- ncdf4::ncatt_get(f, dim.names[dim.axes == "S"], "compress")
   compress.axes <- strsplit(compress.att$value, " ")[[1]]
   stopifnot(length(compress.axes) == 2)
 
@@ -774,10 +770,10 @@ nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian
   time.split <- strsplit(f$dim$time$units, " ")[[1]]
   time.res <- time.split[1]
 
-  time.calendar.att <- ncatt_get(f, time.dim.name, "calendar")
+  time.calendar.att <- ncdf4::ncatt_get(f, time.dim.name, "calendar")
   if(time.split[2] == "as") {
     ## This is to deal with retarded date formats which use format specifiers that aren't valid.
-    return(as.PCICt(as.character(f$dim$time$vals), cal=ifelse(time.calendar.att$hasatt, time.calendar.att$value, "gregorian"), format=strsplit(time.split[3], "\\.")[[1]][1]))
+    return(PCICt::as.PCICt.default(as.character(f$dim$time$vals), cal=ifelse(time.calendar.att$hasatt, time.calendar.att$value, "gregorian"), format=strsplit(time.split[3], "\\.")[[1]][1]))
   } else {
     time.origin.string <- time.split[3]
 
@@ -792,18 +788,18 @@ nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian
     ## Specific hack for people too dumb to tell the difference between an O and a zero.
     time.origin.string <- gsub("O", "0", time.origin.string)
     
-    time.origin <- as.PCICt(time.origin.string, cal=cal)
+    time.origin <- PCICt::as.PCICt.default(time.origin.string, cal=cal)
     
     time.multiplier <- nc.get.time.multiplier(time.res)
 
     time.vals <- f$dim$time$vals
     if(any(is.na(time.vals)))
-      time.vals <- ncvar_get(f, time.dim.name)
+      time.vals <- ncdf4::ncvar_get(f, time.dim.name)
 
     ## Correct calendar output if true gregorian
     seconds.per.day <- 86400
     origin.year.POSIXlt <- 1900
-    x <- as.POSIXlt(time.origin)
+    x <- PCICt::as.POSIXlt.PCICt(time.origin)
     julian.correction <- 0
     if(correct.for.gregorian.julian && cal == "gregorian") {
       year.adjusted <- x$year + origin.year.POSIXlt + as.numeric(x$mon >= 3) - 1
@@ -815,9 +811,9 @@ nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian
     ## Bounds processing
     bounds.vals <- NULL
     if(return.bounds) {
-      bounds.att <- ncatt_get(f, time.dim.name, "bounds")
+      bounds.att <- ncdf4::ncatt_get(f, time.dim.name, "bounds")
       if(bounds.att$hasatt) {
-        bounds.vals <- ncvar_get(f, bounds.att$value)
+        bounds.vals <- ncdf4::ncvar_get(f, bounds.att$value)
       }
     }
 
@@ -837,6 +833,7 @@ nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian
 #'
 #' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch07s04.html}
 #' @examples
+#' library(PCICt)
 #' ts <- as.PCICt(c("1961-01-15", "1961-02-15", "1961-03-15"), cal="360")
 #' ts.bounds <- nc.make.time.bounds(ts, unit="month")
 #'
@@ -846,7 +843,7 @@ nc.make.time.bounds <- function(ts, unit=c("year", "month")) {
   multiplier <- switch(unit, year=1, month=12)
   r <- range(ts)
   r.years <- as.numeric(format(r, "%Y"))
-  start.date <- as.PCICt(paste(r.years[1], "-01-01", sep=""), attr(ts, "cal"))
+  start.date <- PCICt::as.PCICt.default(paste(r.years[1], "-01-01", sep=""), attr(ts, "cal"))
   num.years <- r.years[2] - r.years[1] + 1
   padded.dates <- seq(start.date, by=paste("1", unit), length.out=num.years * multiplier + 1)
   padded.length <- length(padded.dates)
@@ -887,11 +884,11 @@ normalize180 <- function(x) {
 }
 
 nc.get.polar.stereo.proj4.string <- function(f, grid.mapping.name) {
-  lat.ts.att <- ncatt_get(f, grid.mapping.name, "standard_parallel")
-  lat.0.att <- ncatt_get(f, grid.mapping.name, "latitude_of_projection_origin")
-  lon.0.att <- ncatt_get(f, grid.mapping.name, "straight_vertical_longitude_from_pole")
-  x.0.att <- ncatt_get(f, grid.mapping.name, "false_easting")
-  y.0.att <- ncatt_get(f, grid.mapping.name, "false_northing")
+  lat.ts.att <- ncdf4::ncatt_get(f, grid.mapping.name, "standard_parallel")
+  lat.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "latitude_of_projection_origin")
+  lon.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "straight_vertical_longitude_from_pole")
+  x.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "false_easting")
+  y.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "false_northing")
 
   stopifnot(lat.ts.att$hasatt & lat.0.att$hasatt & lon.0.att$hasatt & x.0.att$hasatt & y.0.att$hasatt)
 
@@ -905,11 +902,11 @@ nc.get.polar.stereo.proj4.string <- function(f, grid.mapping.name) {
 }
 
 nc.get.rotated.pole.proj4.string <- function(f, grid.mapping.name) {
-  lat.0.att <- ncatt_get(f, grid.mapping.name, "north_pole_latitude")
-  lon.0.att <- ncatt_get(f, grid.mapping.name, "north_pole_longitude")
+  lat.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "north_pole_latitude")
+  lon.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "north_pole_longitude")
   if(!(lat.0.att$hasatt & lon.0.att$hasatt)) {
-    lat.0.att <- ncatt_get(f, grid.mapping.name, "grid_north_pole_latitude")
-    lon.0.att <- ncatt_get(f, grid.mapping.name, "grid_north_pole_longitude")
+    lat.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "grid_north_pole_latitude")
+    lon.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "grid_north_pole_longitude")
   }
   stopifnot(lat.0.att$hasatt & lon.0.att$hasatt)
 
@@ -918,12 +915,12 @@ nc.get.rotated.pole.proj4.string <- function(f, grid.mapping.name) {
 }
 
 nc.get.lambert.conformal.conic.proj4.string <- function(f, grid.mapping.name) {
-  lat.ts.att <- ncatt_get(f, grid.mapping.name, "standard_parallel")
+  lat.ts.att <- ncdf4::ncatt_get(f, grid.mapping.name, "standard_parallel")
 
-  lat.0.att <- ncatt_get(f, grid.mapping.name, "latitude_of_projection_origin")
-  lon.0.att <- ncatt_get(f, grid.mapping.name, "longitude_of_central_meridian")
-  x.0.att <- ncatt_get(f, grid.mapping.name, "false_easting")
-  y.0.att <- ncatt_get(f, grid.mapping.name, "false_northing")
+  lat.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "latitude_of_projection_origin")
+  lon.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "longitude_of_central_meridian")
+  x.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "false_easting")
+  y.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "false_northing")
 
   stopifnot(lat.ts.att$hasatt & lat.0.att$hasatt & lon.0.att$hasatt & x.0.att$hasatt & y.0.att$hasatt)
   
@@ -931,11 +928,11 @@ nc.get.lambert.conformal.conic.proj4.string <- function(f, grid.mapping.name) {
 }
 
 nc.get.transverse.mercator.proj4.string <- function(f, grid.mapping.name) {
-  lat.0.att <- ncatt_get(f, grid.mapping.name, "latitude_of_projection_origin")
-  lon.0.att <- ncatt_get(f, grid.mapping.name, "longitude_of_central_meridian")
-  k.0.att <- ncatt_get(f, grid.mapping.name, "scale_factor_at_central_meridian")
-  x.0.att <- ncatt_get(f, grid.mapping.name, "false_easting")
-  y.0.att <- ncatt_get(f, grid.mapping.name, "false_northing")
+  lat.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "latitude_of_projection_origin")
+  lon.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "longitude_of_central_meridian")
+  k.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "scale_factor_at_central_meridian")
+  x.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "false_easting")
+  y.0.att <- ncdf4::ncatt_get(f, grid.mapping.name, "false_northing")
 
   stopifnot(k.0.att$hasatt & lat.0.att$hasatt & lon.0.att$hasatt & x.0.att$hasatt & y.0.att$hasatt)
 
@@ -966,11 +963,11 @@ nc.get.transverse.mercator.proj4.string <- function(f, grid.mapping.name) {
 #'
 #' @export
 nc.get.proj4.string <- function(f, v) {
-  grid.mapping.att <- ncatt_get(f, v, "grid_mapping")
+  grid.mapping.att <- ncdf4::ncatt_get(f, v, "grid_mapping")
   if(!grid.mapping.att$hasatt) {
     return("");
   } else {
-    grid.mapping.name.att <- ncatt_get(f, grid.mapping.att$value, "grid_mapping_name")
+    grid.mapping.name.att <- ncdf4::ncatt_get(f, grid.mapping.att$value, "grid_mapping_name")
     
     proj4.string <- switch(grid.mapping.name.att$value,
                            polar_stereographic=nc.get.polar.stereo.proj4.string(f, grid.mapping.att$value),

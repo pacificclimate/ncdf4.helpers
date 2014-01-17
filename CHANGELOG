@@ -1,4 +1,4 @@
-0.3-2: Modify rotated pole proj4 string to work with rgdal.
+0.3-2: Modify rotated pole proj4 string to work with rgdal; clean up use of external packages to meet current R standards.
 
 0.3-1: Clean up functions, add tests, incorporate documentation; initial release on CRAN.
 

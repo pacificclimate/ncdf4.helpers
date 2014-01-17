@@ -1,3 +1,6 @@
+library(ncdf4)
+library(PCICt)
+
 ncdf4.helpers.test.nc.get.time.series <- function() {
   f <- list(t=nc_open("test1.nc"), not=nc_open("test1.nc", readunlim=FALSE))
   correct.data.ts.test1 <- structure(c(599227200, 599313600, 599400000, 599486400, 599572800),

@@ -1,3 +1,4 @@
+library(PCICt)
 
 ncdf4.helpers.test.nc.make.time.bounds <- function() {
   ts <- as.PCICt(c("1961-01-15", "1961-02-15", "1961-03-15"), cal="360")
