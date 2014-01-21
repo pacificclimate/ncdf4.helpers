@@ -388,7 +388,8 @@ nc.get.dim.for.axis <- function(f, v, axis) {
 #'
 #' Many dimension variables are not single points, but in fact represent a range along the axis. This is expressed by associated dimension bounds variables. This function returns the names of any dimension bounds variables found in a file.
 #'
-#' @param f The file (an object of class \code{ncdf4})
+#' @param f The file (an object of class \code{ncdf4}).
+#' @param v The name of the variable (a string).
 #' @return A character vector naming all of the dimension bounds variables found.
 #'
 #' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch07.html#cell-boundaries}
@@ -401,8 +402,9 @@ nc.get.dim.for.axis <- function(f, v, axis) {
 #' }
 #'
 #' @export
-nc.get.dim.bounds.var.list <- function(f) {
+nc.get.dim.bounds.var.list <- function(f, v=NULL) {
   dimension.vars <- names(f$dim)
+  dim.names <- if(is.null(v)) names(f$dim) else nc.get.dim.names(f, v)
   return(unlist(sapply(names(f$dim), function(x) {
     if(f$dim[[x]]$create_dimvar) {
       a <- ncdf4::ncatt_get(f, x, "bounds");
@@ -939,6 +941,26 @@ nc.get.transverse.mercator.proj4.string <- function(f, grid.mapping.name) {
   return(paste("+proj=tmerc +lat_0=", lat.0.att$value, " +lon_0=", lon.0.att$value, " +k_0=", k.0.att$value, " +y_0=", y.0.att$value, " +x_0=", x.0.att$value, sep=""))
 }
 
+nc.get.latitude.longitude.proj4.string <- function(f, grid.mapping.name) {
+  semi.major.att <- ncdf4::ncatt_get(f, grid.mapping.name, "semi_major_axis")
+  semi.minor.att <- ncdf4::ncatt_get(f, grid.mapping.name, "semi_minor_axis")
+  inverse.flattening.att <- ncdf4::ncatt_get(f, grid.mapping.name, "inverse_flattening")
+  central.meridian.att <- ncdf4::ncatt_get(f, grid.mapping.name, "longitude_of_prime_meridian")
+
+  proj4.string <- ""
+
+  if(semi.major.att$hasatt)
+    proj4.string <- paste(proj4.string, "+a", semi.major.att$value)
+  if(inverse.flattening.att$hasatt)
+    proj4.string <- paste(proj4.string, "+rf", inverse.flattening.att$value)
+  else if(semi.minor.att$hasatt)
+    proj4.string <- paste(proj4.string, "+b", semi.minor.att$value)
+  if(central.meridian.att$hasatt)
+    proj4.string <- paste(proj4.string, "+lon_0", central.meridian.att$value)
+
+  return(stringr::str_trim(proj4.string))
+}
+
 ## Returns the spatial reference ID of the data set, or WGS84 (4326) if nothing found
 #' Gets the proj4 string for a file
 #'
@@ -946,11 +968,11 @@ nc.get.transverse.mercator.proj4.string <- function(f, grid.mapping.name) {
 #'
 #' Most NetCDF files are stored without any projection information as a lat-long grid. However, some files -- particularly those from RCMs -- are on a projected grid. This function returns a proj4 string, suitable for use with the 'proj4' library, which can be used to perform forward and inverse projections.
 #' 
-#' Given a file and a variable, this function returns the proj4 string for the given file should be. If no projection data is found, it returns an empty string. It currently supports Lambert Conformal Conic, Transverse Mercator, Polar Sterographic, and Rotated Pole projections.
+#' Given a file and a variable, this function returns the proj4 string for the given file should be. If no projection data is found, it returns an empty string. It currently supports Lambert Conformal Conic, Transverse Mercator, Polar Sterographic, and Rotated Pole projections, plus the latitude_longitude pseudo-projection.
 #'
 #' @param f The file (an object of class \code{ncdf4})
 #' @param v The name of a variable
-#' @return A string containing the proj4 string
+#' @return A string containing the proj4 string, or NULL if a translator is not available for the given projection.
 #'
 #' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch05s06.html}
 #' @examples
@@ -973,7 +995,8 @@ nc.get.proj4.string <- function(f, v) {
                            polar_stereographic=nc.get.polar.stereo.proj4.string(f, grid.mapping.att$value),
                            rotated_latitude_longitude=nc.get.rotated.pole.proj4.string(f, grid.mapping.att$value),
                            lambert_conformal_conic=nc.get.lambert.conformal.conic.proj4.string(f, grid.mapping.att$value),
-                           transverse_mercator=nc.get.transverse.mercator.proj4.string(f, grid.mapping.att$value)
+                           transverse_mercator=nc.get.transverse.mercator.proj4.string(f, grid.mapping.att$value),
+                           latitude_longitude=nc.get.latitude.longitude.proj4.string(f, grid.mapping.att$value)
                            )
     return(proj4.string)
   }

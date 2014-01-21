@@ -1,3 +1,5 @@
+0.3-3: Add parameter to nc.get.dim.bounds.var.list to get a list for a variable; add latitude_longitude to grid_mapping list.
+
 0.3-2: Modify rotated pole proj4 string to work with rgdal; clean up use of external packages to meet current R standards.
 
 0.3-1: Clean up functions, add tests, incorporate documentation; initial release on CRAN.

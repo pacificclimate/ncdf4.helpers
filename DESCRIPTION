@@ -1,6 +1,6 @@
 Package: ncdf4.helpers
-Version: 0.3-2
-Date: 2014-01-16
+Version: 0.3-3
+Date: 2014-01-29
 Title: Helper functions for use with the ncdf4 package
 Author: David Bronaugh <bronaugh@uvic.ca> for the Pacific Climate Impacts
     Consortium (PCIC)
@@ -10,7 +10,8 @@ Depends:
 Imports:
     ncdf4,
     PCICt,
-    abind
+    abind,
+    stringr
 Suggests:
     RUnit,
     proj4
