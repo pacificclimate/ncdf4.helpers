@@ -810,16 +810,19 @@ nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian
       julian.correction <- diff.days * seconds.per.day
     }
 
+    ret.data <- list(.Data=time.origin + julian.correction + (time.vals * time.multiplier))
+
     ## Bounds processing
-    bounds.vals <- NULL
     if(return.bounds) {
       bounds.att <- ncdf4::ncatt_get(f, time.dim.name, "bounds")
-      if(bounds.att$hasatt) {
-        bounds.vals <- ncdf4::ncvar_get(f, bounds.att$value)
-      }
+      climatology.bounds.att <- ncdf4::ncatt_get(f, time.dim.name, "climatology_bounds")
+      if(bounds.att$hasatt)
+        ret.data[["bounds"]] <- time.origin + (ncdf4::ncvar_get(f, bounds.att$value) * time.multiplier)
+      if(climatology.bounds.att$hasatt)
+        ret.data[["climatology.bounds"]] <- time.origin + (ncdf4::ncvar_get(f, climatology.bounds.att$value) * time.multiplier)
     }
 
-    return(if(return.bounds) structure(time.origin + julian.correction + (time.vals * time.multiplier), bounds=time.origin + (bounds.vals * time.multiplier)) else structure(time.origin + julian.correction + (time.vals * time.multiplier)))
+    return(do.call(structure, ret.data))
   }
 }
 
@@ -947,7 +950,7 @@ nc.get.latitude.longitude.proj4.string <- function(f, grid.mapping.name) {
   inverse.flattening.att <- ncdf4::ncatt_get(f, grid.mapping.name, "inverse_flattening")
   central.meridian.att <- ncdf4::ncatt_get(f, grid.mapping.name, "longitude_of_prime_meridian")
 
-  proj4.string <- ""
+  proj4.string <- "+proj=longlat"
 
   if(semi.major.att$hasatt)
     proj4.string <- paste(proj4.string, "+a", semi.major.att$value)
@@ -958,7 +961,7 @@ nc.get.latitude.longitude.proj4.string <- function(f, grid.mapping.name) {
   if(central.meridian.att$hasatt)
     proj4.string <- paste(proj4.string, "+lon_0", central.meridian.att$value)
 
-  return(stringr::str_trim(proj4.string))
+  return(proj4.string)
 }
 
 ## Returns the spatial reference ID of the data set, or WGS84 (4326) if nothing found
