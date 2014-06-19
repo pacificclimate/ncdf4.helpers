@@ -1,3 +1,5 @@
+0.3-4: MINOR: Add 'seconds' as a valid time value.
+
 0.3-3: MAJOR: Import PCICt, which solves problems with nc.get.time.series.
        MINOR: Add parameter to nc.get.dim.bounds.var.list to get a list for a variable; add latitude_longitude to grid_mapping list; add functionality to return climatology_bounds for a time series upon request.
 

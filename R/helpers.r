@@ -710,7 +710,7 @@ nc.is.regular.dimension <- function(d, tolerance=0.000001) {
 #'
 #' @export
 nc.get.time.multiplier <- function(x) {
-  return(switch(x, "days"=86400, "hours"=3600, "minutes"=60, "months"=86400 * 30))
+  return(switch(x, "days"=86400, "hours"=3600, "minutes"=60, "months"=86400 * 30, "seconds"=1))
 }
 
 #' Returns time axis data as PCICt for a file
@@ -783,7 +783,7 @@ nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian
       time.origin.string <- paste(time.origin.string, "-01", sep="")
     
     if(length(time.split) > 3)
-      time.origin.string <- paste(time.origin.string, time.split[4])
+      time.origin.string <- paste(time.origin.string, time.split[4:length(time.split)])
 
     cal <- ifelse(time.calendar.att$hasatt, time.calendar.att$value, "gregorian")
     
@@ -793,7 +793,9 @@ nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian
     time.origin <- PCICt::as.PCICt.default(time.origin.string, cal=cal)
     
     time.multiplier <- nc.get.time.multiplier(time.res)
-
+    if(length(time.multiplier) == 0)
+      stop("Time units aren't parseable.")
+    
     time.vals <- f$dim$time$vals
     if(any(is.na(time.vals)))
       time.vals <- ncdf4::ncvar_get(f, time.dim.name)
