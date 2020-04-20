@@ -52,7 +52,7 @@ get.cluster.worker.subsets <- function(num.vals, dim.size, dim.axes, axis.to.spl
 #' @param cmip5.file The filename to be split.
 #' @return A vector containing the variable (var), time resolution (tres), model (model), emissions scenario (emissions), run (run), time range (trange), time start (tstart) and time end (tend) for the file.
 #'
-#' @references \url{http://cmip-pcmdi.llnl.gov/cmip5/docs/CMIP5_output_metadata_requirements.pdf}
+#' @references \url{https://pcmdi.llnl.gov/mips/cmip5/docs/CMIP5_output_metadata_requirements.pdf?id=28}
 #' @examples
 #' ## Split up filename into component bits
 #' split.bits <- get.split.filename.cmip5(
@@ -392,7 +392,7 @@ nc.get.dim.for.axis <- function(f, v, axis) {
 #' @param v The name of the variable (a string).
 #' @return A character vector naming all of the dimension bounds variables found.
 #'
-#' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch07.html#cell-boundaries}
+#' @references \url{http://cfconventions.org/Data/cf-conventions/cf-conventions-1.8/cf-conventions.html#cell-boundaries}
 #' @examples
 #' ## Get list of dimension bound variables
 #' \dontrun{
@@ -432,7 +432,7 @@ nc.get.dim.bounds.var.list <- function(f, v=NULL) {
 #' @param f The file (an object of class \code{ncdf4})
 #' @return A character vector naming all of the climatology bounds variables found.
 #'
-#' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch07s04.html}
+#' @references \url{http://cfconventions.org/Data/cf-conventions/cf-conventions-1.8/cf-conventions.html#climatological-statistics}
 #' @examples
 #' ## Get list of climatology bounds variables
 #' \dontrun{
@@ -556,7 +556,7 @@ nc.get.dim.axes.from.names <- function(f, v, dim.names) {
 #' @param v The name of a variable
 #' @return A named character vector containing axes, the names of which are the corresponding dimension variables.
 #'
-#' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch05s02.html}
+#' @references \url{http://cfconventions.org/Data/cf-conventions/cf-conventions-1.8/cf-conventions.html#_two_dimensional_latitude_longitude_coordinate_variables}
 #' @examples
 #' ## Get coordinate axes from file.
 #' \dontrun{
@@ -645,7 +645,7 @@ nc.get.dim.axes <- function(f, v, dim.names) {
 #' @param v The name of a variable
 #' @return A list consisting of two members of class \code{ncdim4}: x.dim for the X axis, and y.dim for the Y axis.
 #'
-#' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch05s03.html}
+#' @references \url{http://cfconventions.org/Data/cf-conventions/cf-conventions-1.8/cf-conventions.html#reduced-horizontal-grid}
 #' @examples
 #' ## Get compress dimensions from file.
 #' \dontrun{
@@ -728,7 +728,7 @@ nc.get.time.multiplier <- function(x) {
 #' @param return.bounds Whether to return the time bounds as an additional attribute
 #' @return A vector of PCICt objects, optionally with bounds
 #'
-#' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch04s04.html}
+#' @references \url{http://cfconventions.org/Data/cf-conventions/cf-conventions-1.8/cf-conventions.html#time-coordinate}
 #' @examples
 #' ## Get time series from file
 #' \dontrun{
@@ -838,7 +838,7 @@ nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian
 #' @param unit The units to be used.
 #' @return 2-dimensional bounds array for the time values with dimensions [length(ts), 2].
 #'
-#' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch07s04.html}
+#' @references \url{http://cfconventions.org/Data/cf-conventions/cf-conventions-1.8/cf-conventions.html#climatological-statistics}
 #' @examples
 #' library(PCICt)
 #' ts <- as.PCICt(c("1961-01-15", "1961-02-15", "1961-03-15"), cal="360")
@@ -979,7 +979,7 @@ nc.get.latitude.longitude.proj4.string <- function(f, grid.mapping.name) {
 #' @param v The name of a variable
 #' @return A string containing the proj4 string, or NULL if a translator is not available for the given projection.
 #'
-#' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/ch05s06.html}
+#' @references \url{http://cfconventions.org/Data/cf-conventions/cf-conventions-1.8/cf-conventions.html#grid-mappings-and-projections}
 #' @examples
 #' ## Get the proj4 string for a hypothetical file.
 #' \dontrun{
