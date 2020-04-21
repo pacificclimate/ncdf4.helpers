@@ -1,6 +1,6 @@
 Package: ncdf4.helpers
 Version: 0.3-5
-Date: 2020-03-06
+Date: 2020-04-21
 Title: Helper Functions for Use with the Ncdf4 Package
 Author: David Bronaugh <bronaugh@uvic.ca> for the Pacific Climate Impacts
     Consortium (PCIC)
@@ -12,8 +12,8 @@ Imports:
     PCICt,
     abind
 Suggests:
-    RUnit,
-    proj4
+    proj4,
+    testthat
 Description: Contains a collection of helper functions for dealing with 
     NetCDF files opened using ncdf4.
 License: LGPL-2.1
