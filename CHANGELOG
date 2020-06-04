@@ -1,4 +1,4 @@
-0.3-5: MINOR: Update maintainer, test suite, and documentation.
+0.3-5: MINOR: Update maintainer, test suite, and documentation. On the Debian OS, one of the tests returns some unexpected values, and is partially skipped.
 
 0.3-4: MINOR: Add 'seconds' as a valid time value.
 
