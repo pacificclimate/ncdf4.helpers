@@ -1,3 +1,4 @@
 .hgtags
 .hg
 man-roxygen
+^\.github$
