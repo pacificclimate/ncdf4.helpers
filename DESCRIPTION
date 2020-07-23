@@ -1,10 +1,10 @@
 Package: ncdf4.helpers
-Version: 0.3-4
-Date: 2014-04-03
-Title: Helper functions for use with the ncdf4 package
+Version: 0.3-5
+Date: 2020-06-05
+Title: Helper Functions for Use with the 'ncdf4' Package
 Author: David Bronaugh <bronaugh@uvic.ca> for the Pacific Climate Impacts
     Consortium (PCIC)
-Maintainer: David Bronaugh <bronaugh@uvic.ca>
+Maintainer: Lee Zeman <lzeman@uvic.ca>
 Depends:
     R (>= 2.12.0)
 Imports:
@@ -12,9 +12,14 @@ Imports:
     PCICt,
     abind
 Suggests:
-    RUnit,
-    proj4
-Description: This package contains a collection of helper functions for dealing
-    with NetCDF files opened using ncdf4.
+    proj4,
+    testthat
+Description: Contains a collection of helper functions for dealing with 
+    'NetCDF' files <https://www.unidata.ucar.edu/software/netcdf/> 
+    opened using 'ncdf4', particularly 'NetCDF' files that conform to the
+    Climate and Forecast (CF) Metadata Conventions 
+    <http://cfconventions.org/Data/cf-conventions/cf-conventions-1.7/cf-conventions.html>.
 License: LGPL-2.1
-URL: http://www.r-project.org
+URL: https://www.r-project.org
+BugReports: https://github.com/pacificclimate/ncdf4.helpers/issues
+RoxygenNote: 7.0.2

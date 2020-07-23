@@ -30,5 +30,5 @@
 #' @aliases ncdf4.helpers-package
 #' @docType package
 #' @keywords climate ts
-#' @references \url{http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/cf-conventions-multi.html}
+#' @references \url{http://cfconventions.org/Data/cf-conventions/cf-conventions-1.8/cf-conventions.html}
 NULL
