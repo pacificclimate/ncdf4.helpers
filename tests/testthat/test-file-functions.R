@@ -53,8 +53,8 @@ test_that("grid mappings are read and applied", {
 	# The project() function in the proj4 r package returns unexpected values
 	# on these inputs on Debian systems.
 	# Run on Ubuntu, Windows, Fedora, CentOS, and Mac, the tests behave as expected.
-	# Accordingly, the last part of this test is skipped on Linux systems.
-	skip_on_os("linux")
+	# Accordingly, the last part of this test is skipped on Debian systems.
+	skip_if(grepl("Debian", Sys.info()["version"]), message="proj4 behaves unexpectedly on a Debian system")
 	projected.data <- list(x=f$dim$rlon$vals[indices[,"x"]], y=f$dim$rlat$vals[indices[,"y"]])
 			
 	latlon.data <- project(projected.data, proj4.string, ellps.default=NA, inverse=TRUE)
