@@ -769,7 +769,7 @@ nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian
   }
 
   time.units <- f$dim$time$units
-  time.split <- strsplit(f$dim$time$units, " ")[[1]]
+  time.split <- strsplit(f$dim$time$units, " +")[[1]]
   time.res <- time.split[1]
 
   time.calendar.att <- ncdf4::ncatt_get(f, time.dim.name, "calendar")
