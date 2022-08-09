@@ -3,3 +3,5 @@
 man-roxygen
 ^\.github$
 README.rst
+^.*\.Rproj$
+^\.Rproj\.user$
