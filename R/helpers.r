@@ -764,18 +764,18 @@ nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian
   if(!f$dim[[time.dim.name]]$create_dimvar)
     stop(paste("Couldn't find dimension variable for dim '", time.dim.name, "' in file.", sep=""))
 
-  if(f$dim$time$len == 0) {
+  if(f$dim[[time.dim.name]]$len == 0) {
     return(NA)
   }
 
-  time.units <- f$dim$time$units
-  time.split <- strsplit(f$dim$time$units, " ")[[1]]
+  time.units <- f$dim[[time.dim.name]]$units
+  time.split <- strsplit(f$dim[[time.dim.name]]$units, " +")[[1]]
   time.res <- time.split[1]
 
   time.calendar.att <- ncdf4::ncatt_get(f, time.dim.name, "calendar")
   if(time.split[2] == "as") {
     ## This is to deal with retarded date formats which use format specifiers that aren't valid.
-    return(PCICt::as.PCICt.default(as.character(f$dim$time$vals), cal=ifelse(time.calendar.att$hasatt, time.calendar.att$value, "gregorian"), format=strsplit(time.split[3], "\\.")[[1]][1]))
+    return(PCICt::as.PCICt.default(as.character(f$dim[[time.dim.name]]$vals), cal=ifelse(time.calendar.att$hasatt, time.calendar.att$value, "gregorian"), format=strsplit(time.split[3], "\\.")[[1]][1]))
   } else {
     time.origin.string <- time.split[3]
 
@@ -796,7 +796,7 @@ nc.get.time.series <- function(f, v, time.dim.name, correct.for.gregorian.julian
     if(length(time.multiplier) == 0)
       stop("Time units aren't parseable.")
     
-    time.vals <- f$dim$time$vals
+    time.vals <- f$dim[[time.dim.name]]$vals
     if(any(is.na(time.vals)))
       time.vals <- ncdf4::ncvar_get(f, time.dim.name)
 
