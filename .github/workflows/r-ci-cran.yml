@@ -59,7 +59,7 @@ jobs:
       - name: Build Documentation (Windows)
         if: runner.os == 'Windows'
         run: |
-          Rscript -e 'install.packages(\\\"devtools\\\");devtools::document()'
+          Rscript -e 'install.packages(\"devtools\");devtools::document()'
       - name: Check
         env:
           _R_CHECK_CRAN_INCOMING_REMOTE_: false
