@@ -21,3 +21,6 @@ export(nc.get.variable.list)
 export(nc.is.regular.dimension)
 export(nc.make.time.bounds)
 export(nc.put.var.subset.by.axes)
+
+importFrom("stats", "na.omit")
+importFrom("utils", "head", "tail")
