@@ -28,7 +28,6 @@
 #'
 #' @name ncdf4.helpers
 #' @aliases ncdf4.helpers-package
-#' @docType package
 #' @keywords climate ts
 #' @references \url{http://cfconventions.org/Data/cf-conventions/cf-conventions-1.8/cf-conventions.html}
-NULL
+"_PACKAGE"
