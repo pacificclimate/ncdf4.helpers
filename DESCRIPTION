@@ -22,4 +22,4 @@ Description: Contains a collection of helper functions for dealing with
 License: LGPL-2.1
 URL: https://www.r-project.org
 BugReports: https://github.com/pacificclimate/ncdf4.helpers/issues
-RoxygenNote: 7.0.2
+RoxygenNote: 7.3.2
