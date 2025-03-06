@@ -1,6 +1,6 @@
 Package: ncdf4.helpers
-Version: 0.3-5
-Date: 2020-06-05
+Version: 0.3-7
+Date: 2025-03-06
 Title: Helper Functions for Use with the 'ncdf4' Package
 Author: David Bronaugh <bronaugh@uvic.ca> for the Pacific Climate Impacts
     Consortium (PCIC)
@@ -22,4 +22,4 @@ Description: Contains a collection of helper functions for dealing with
 License: LGPL-2.1
 URL: https://www.r-project.org
 BugReports: https://github.com/pacificclimate/ncdf4.helpers/issues
-RoxygenNote: 7.0.2
+RoxygenNote: 7.3.2

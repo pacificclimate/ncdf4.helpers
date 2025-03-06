@@ -1,3 +1,5 @@
 .hgtags
 .hg
 man-roxygen
+^\.github
+README.md
