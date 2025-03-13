@@ -2,9 +2,9 @@ Package: ncdf4.helpers
 Version: 0.3-7
 Date: 2025-03-06
 Title: Helper Functions for Use with the 'ncdf4' Package
-Author: David Bronaugh <bronaugh@uvic.ca> for the Pacific Climate Impacts
-    Consortium (PCIC)
-Maintainer: Lee Zeman <lzeman@uvic.ca>
+Authors@R: c(
+    person("David", "Bronaugh", email = "bronaugh@uvic.ca", role = "aut"),
+    person("Lee", "Zeman", email = "lzeman@uvic.ca", role = "cre"))
 Depends:
     R (>= 2.12.0)
 Imports:
