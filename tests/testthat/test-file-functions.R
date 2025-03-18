@@ -140,7 +140,6 @@ test_that("a subset of data can be read", {
 })
 
 test_that("data can be written to a netCDF file", {
-	skip("Test update in progress")
 	filename <- tempfile()
 	f.in <- nc_open("test1.nc")
 	dat <- nc.get.var.subset.by.axes(f.in, "tasmax", list(X=1:4, Y=c(1, 3, 5)))
