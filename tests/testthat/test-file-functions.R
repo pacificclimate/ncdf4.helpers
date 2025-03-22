@@ -140,7 +140,6 @@ test_that("a subset of data can be read", {
 })
 
 test_that("data can be written to a netCDF file", {
-	skip("Test update in progress")
 	filename <- tempfile()
 	f.in <- nc_open("test1.nc")
 	dat <- nc.get.var.subset.by.axes(f.in, "tasmax", list(X=1:4, Y=c(1, 3, 5)))
@@ -152,12 +151,12 @@ test_that("data can be written to a netCDF file", {
 	nc.copy.atts(f.in, "rlat", f.out, "rlat")
 	nc.copy.atts(f.in, "rlon", f.out, "rlon")
 	nc.copy.atts(f.in, "tasmax", f.out, "tasmax")
+	nc_sync(f.out)
 	dat.permuted <- nc.conform.data(f.in, f.out, "tasmax", "tasmax", dat, allow.dim.subsets=TRUE)
 	nc.put.var.subset.by.axes(f.out, "tasmax", dat.permuted, list())
 	nc_sync(f.out)
 	nc_close(f.out)
 	f.out <- nc_open(filename)
-			
 	dat.out <- nc.get.var.subset.by.axes(f.out, "tasmax", list())
 	expect_equal(as.numeric(dat.out), as.numeric(dat.permuted))
 	expect_equal(dat[1, 2, 3], dat.out[3, 3, 2])

@@ -1,5 +1,5 @@
 Package: ncdf4.helpers
-Version: 0.3-7
+Version: 0.3-8
 Date: 2025-03-06
 Title: Helper Functions for Use with the 'ncdf4' Package
 Authors@R: c(
