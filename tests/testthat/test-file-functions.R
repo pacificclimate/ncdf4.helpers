@@ -148,6 +148,8 @@ test_that("data can be written to a netCDF file", {
 	t.dim <- ncdim_def("time", "days since 1949-12-01", vals=f.in$dim$time$vals)
 	var.list <- list(tasmax=ncvar_def("tasmax", "K", list(t.dim, x.dim, y.dim), 1e20, longname="Daily Maximum Near-Surface Air Temperature"))
 	f.out <- nc_create(filename, var.list)
+	nc.copy.atts(f.in, "rlat", f.out, "rlat")
+	nc.copy.atts(f.in, "rlon", f.out, "rlon")
 	nc.copy.atts(f.in, "tasmax", f.out, "tasmax")
 	nc_sync(f.out)
 	dat.permuted <- nc.conform.data(f.in, f.out, "tasmax", "tasmax", dat, allow.dim.subsets=TRUE)
