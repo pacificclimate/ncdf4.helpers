@@ -141,7 +141,6 @@ test_that("a subset of data can be read", {
 
 test_that("data can be written to a netCDF file", {
 	filename <- tempfile()
-	f.in <- nc_open("test1.nc")
 	dat <- array(runif(60), c(4, 3, 5))
 	x.dim <- ncdim_def("rlon", "degrees", vals=c(-33.0, -32.56, -33.88, -33.44)) 
 	y.dim <- ncdim_def("rlat", "degrees", vals=c(-28.60, -27.72, -26.84))
@@ -149,11 +148,8 @@ test_that("data can be written to a netCDF file", {
 	var.list <- list(tasmax=ncvar_def("tasmax", "K", list(x.dim, y.dim, t.dim), 1e20, longname="Daily Maximum Near-Surface Air Temperature"))
 	f.out <- nc_create(filename, var.list)
 	nc_sync(f.out)
-	nc.put.var.subset.by.axes(f.out, "tasmax", dat, list())
+    ncvar_put(f.out, "tasmax", dat)
 	nc_sync(f.out)
-	nc_close(f.out)
-	f.out <- nc_open(filename)
-	nc_close(f.in)
 	nc_close(f.out)
 			
 	unlink(filename)			
