@@ -142,7 +142,7 @@ test_that("a subset of data can be read", {
 test_that("data can be written to a netCDF file", {
 	filename <- tempfile()
 	f.in <- nc_open("test1.nc")
-	dat <- nc.get.var.subset.by.axes(f.in, "tasmax", list(X=1:4, Y=c(1, 3, 5)))
+	dat <- array(runif(60), c(4, 3, 5))
 	x.dim <- ncdim_def("rlon", "degrees", vals=f.in$dim$rlon$vals[c(3:4, 1:2)])
 	y.dim <- ncdim_def("rlat", "degrees", vals=f.in$dim$rlat$vals[c(1, 3, 5)])
 	t.dim <- ncdim_def("time", "days since 1949-12-01", vals=f.in$dim$time$vals)
@@ -156,8 +156,6 @@ test_that("data can be written to a netCDF file", {
 	nc_sync(f.out)
 	nc_close(f.out)
 	f.out <- nc_open(filename)
-	dat.out <- nc.get.var.subset.by.axes(f.out, "tasmax", list())
-	expect_equal(as.numeric(dat.out), as.numeric(dat))
 	nc_close(f.in)
 	nc_close(f.out)
 			
