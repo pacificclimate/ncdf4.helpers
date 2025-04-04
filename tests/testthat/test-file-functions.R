@@ -150,16 +150,13 @@ test_that("data can be written to a netCDF file", {
 	nc_sync(f.out)
 	
 	
-	# this section is an inlining of nc.put.var.subst.by.axes to find teh error
-	f <- f.out
-	v <- "tasmax"
-	dat <- dat
+	# this section is a copy-paste inlining of nc.put.var.subst.by.axes to find the error
 	axis.indices <- list()
 	axes.map <- NULL
 	input.axes <- NULL
 	
 	if(is.null(axes.map))
-      axes.map <- nc.get.dim.axes(f, v)
+      axes.map <- nc.get.dim.axes(f.out, "tasmax")
 
     if(length(axes.map) == 0)
       return(c())
@@ -176,7 +173,7 @@ test_that("data can be written to a netCDF file", {
   
     ## Check that all axes are in the map and that the names are the same as the dim names
     stopifnot(all(names(axis.indices) %in% axes.map))
-    stopifnot(names(axes.map) %in% nc.get.dim.names(f, v))
+    stopifnot(names(axes.map) %in% nc.get.dim.names(f.out, "tasmax"))
   
     ## Chunk consecutive sets of blocks into a request
     chunked.axes.indices <- lapply(axis.indices, function(indices) {
@@ -186,11 +183,11 @@ test_that("data can be written to a netCDF file", {
     })
   
     ## By default, fetch all data.
-    starts <- rep(1, length(f$var[[v]]$dim))
-    counts <- rep(-1, length(f$var[[v]]$dim))
+    starts <- rep(1, length(f.out$var[["tasmax"]]$dim))
+    counts <- rep(-1, length(f.out$var[["tasmax"]]$dim))
     names(starts) <- names(counts) <- axes.map
   
-    nc.put.subset.recursive(chunked.axes.indices, f, v, dat, starts, counts, axes.map)
+    nc.put.subset.recursive(chunked.axes.indices, f.out, "tasmax", dat, starts, counts, axes.map)
 	
 	# end inlining of nc.put.var.subst.by.axes
 
