@@ -158,18 +158,39 @@ test_that("data can be written to a netCDF file", {
 	axes.map <- NULL
 	input.axes <- NULL
 	
-	axes.map <- nc.get.dim.axes(f)
-	chunked.axes.indices <- lapply(axis.indices, function(indices) {
-		if(length(indices) == 0) return(c())
-		boundary.indices <- c(0, which(diff(indices) != 1), length(indices))
-		lapply(1:(length(boundary.indices) - 1), function(x) { (indices[boundary.indices[x] + 1]):indices[boundary.indices[x + 1]] } )
-	})
-	
-	starts <- rep(1, length(f$var[[v]]$dim))
-	counts <- rep(-1, length(f$var[[v]]$dim))
-	names(starts) <- names(counts) <- axes.map
-	
-	nc.put.subset.recursive(chunked.axes.indices, f, v, dat, starts, counts, axes.map)
+	if(is.null(axes.map))
+      axes.map <- nc.get.dim.axes(f, v)
+
+    if(length(axes.map) == 0)
+      return(c())
+
+    ## Permute data to match order within file...
+    if(!is.null(input.axes)) {
+      stopifnot(length(dim(dat)) == length(input.axes))
+      stopifnot(length(input.axes) == length(axes.map))
+      o.axes <- order(axes.map)
+      o.input <- order(input.axes)
+      if(o.axes != o.input)
+        dat <- aperm(dat, o.axes[o.input])
+    }
+  
+    ## Check that all axes are in the map and that the names are the same as the dim names
+    stopifnot(all(names(axis.indices) %in% axes.map))
+    stopifnot(names(axes.map) %in% nc.get.dim.names(f, v))
+  
+    ## Chunk consecutive sets of blocks into a request
+    chunked.axes.indices <- lapply(axis.indices, function(indices) {
+      if(length(indices) == 0) return(c())
+      boundary.indices <- c(0, which(diff(indices) != 1), length(indices))
+      lapply(1:(length(boundary.indices) - 1), function(x) { (indices[boundary.indices[x] + 1]):indices[boundary.indices[x + 1]] } )
+    })
+  
+    ## By default, fetch all data.
+    starts <- rep(1, length(f$var[[v]]$dim))
+    counts <- rep(-1, length(f$var[[v]]$dim))
+    names(starts) <- names(counts) <- axes.map
+  
+    nc.put.subset.recursive(chunked.axes.indices, f, v, dat, starts, counts, axes.map)
 	
 	# end inlining of nc.put.var.subst.by.axes
 
