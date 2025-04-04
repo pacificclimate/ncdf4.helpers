@@ -148,7 +148,33 @@ test_that("data can be written to a netCDF file", {
 	var.list <- list(tasmax=ncvar_def("tasmax", "K", list(x.dim, y.dim, t.dim), 1e20, longname="Daily Maximum Near-Surface Air Temperature"))
 	f.out <- nc_create(filename, var.list)
 	nc_sync(f.out)
-    ncvar_put(f.out, "tasmax", dat)
+	
+	
+	# this section is an inlining of nc.put.var.subst.by.axes to find teh error
+	f <- f.out
+	v <- "tasmax"
+	dat <- dat
+	axis.indices <- list()
+	axes.map <- NULL
+	input.axes <- NULL
+	
+	axes.map <- nc.get.dim.axes(f)
+	chunked.axes.indices <- lapply(axis.indices, function(indices) {
+		if(length(indices) == 0) return(c())
+		boundary.indices <- c(0, which(diff(indices) != 1), length(indices))
+		lapply(1:(length(boundary.indices) - 1), function(x) { (indices[boundary.indices[x] + 1]):indices[boundary.indices[x + 1]] } )
+	})
+	
+	starts <- rep(1, length(f$var[[v]]$dim))
+	counts <- rep(-1, length(f$var[[v]]$dim))
+	names(starts) <- names(counts) <- axes.map
+	
+	nc.put.subset.recursive(chunked.axes.indices, f, v, dat, starts, counts, axes.map)
+	
+	# end inlining of nc.put.var.subst.by.axes
+
+	
+	
 	nc_sync(f.out)
 	nc_close(f.out)
 			
