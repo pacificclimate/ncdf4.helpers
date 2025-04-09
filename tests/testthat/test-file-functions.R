@@ -151,11 +151,22 @@ test_that("data can be written to a netCDF file", {
 	
 	
     # attribute assignment appears to be part of the problem?
-    # I think the axis attributes are the only ones that might be load bearing
-    # so try those
     ncatt_put(f.out, "rlat", "axis", "Y")
+    ncatt_put(f.out, "rlat", "units", "degrees")
+    ncatt_put(f.out, "rlat", "standard_name", "grid_latitude")
+    ncatt_put(f.out, "rlat", "long_name", "latitude in rotated pole grid")
+    
     ncatt_put(f.out, "rlon", "axis", "X")
+    ncatt_put(f.out, "rlon", "long_name", "longitude in rotated pole grid")
+    ncatt_put(f.out, "rlon", "units", "degrees")
+    ncatt_put(f.out, "rlon", "standard_name", "grid_longitude")
+        
     ncatt_put(f.out, "time", "axis", "T")
+    ncatt_put(f.out, "time", "long_name", "time")
+    ncatt_put(f.out, "time", "standard_name", "time")
+    ncatt_put(f.out, "time", "units", "days since 1949-12-01")
+    ncatt_put(f.out, "time", "calendar", "365_day")
+    ncatt_put(f.out, "time", "bounds", "time_bnds")
 	
 	# this section is a copy-paste inlining of nc.put.var.subst.by.axes to find the error
 	axis.indices <- list()
