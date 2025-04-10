@@ -149,24 +149,11 @@ test_that("data can be written to a netCDF file", {
 	f.out <- nc_create(filename, var.list)
 	nc_sync(f.out)
 	
-	
-    # attribute assignment appears to be part of the problem?
-    ncatt_put(f.out, "rlat", "axis", "Y")
-    ncatt_put(f.out, "rlat", "units", "degrees")
-    ncatt_put(f.out, "rlat", "standard_name", "grid_latitude")
-    ncatt_put(f.out, "rlat", "long_name", "latitude in rotated pole grid")
-    
-    ncatt_put(f.out, "rlon", "axis", "X")
-    ncatt_put(f.out, "rlon", "long_name", "longitude in rotated pole grid")
-    ncatt_put(f.out, "rlon", "units", "degrees")
-    ncatt_put(f.out, "rlon", "standard_name", "grid_longitude")
-        
-    ncatt_put(f.out, "time", "axis", "T")
-    ncatt_put(f.out, "time", "long_name", "time")
-    ncatt_put(f.out, "time", "standard_name", "time")
-    ncatt_put(f.out, "time", "units", "days since 1949-12-01")
-    ncatt_put(f.out, "time", "calendar", "365_day")
-    ncatt_put(f.out, "time", "bounds", "time_bnds")
+	#copy attributes from another file
+	f.in <- nc_open("test1.nc")
+	nc.copy.atts(f.in, "rlat", f.out, "rlat")
+	nc.copy.atts(f.in, "rlon", f.out, "rlon")
+	nc.copy.atts(f.in, "tasmax", f.out, "tasmax")
 	
 	# this section is a copy-paste inlining of nc.put.var.subst.by.axes to find the error
 	axis.indices <- list()
