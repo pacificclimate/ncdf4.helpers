@@ -155,6 +155,8 @@ test_that("data can be written to a netCDF file", {
 	nc.copy.atts(f.in, "rlon", f.out, "rlon")
 	nc.copy.atts(f.in, "tasmax", f.out, "tasmax")
 	
+    ncvar_put(f.out, "tasmax", dat)
+	
 	
 	nc_sync(f.out)
 	nc_close(f.out)
