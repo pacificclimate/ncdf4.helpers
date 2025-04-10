@@ -151,7 +151,8 @@ test_that("data can be written to a netCDF file", {
 	
 	#copy attributes from another file
 	f.in <- nc_open("test1.nc")
-	nc.copy.atts(f.in, "rlat", f.out, "rlat")
+	nc.copy.atts(f.in, "rlon", f.out, "rlon")
+	nc.copy.atts(f.in, "tasmax", f.out, "tasmax")
 	
     ncvar_put(f.out, "tasmax", dat)
 	
