@@ -150,9 +150,10 @@ test_that("data can be written to a netCDF file", {
 	nc_sync(f.out)
 	
 	#copy attributes from another file
-	f.in <- nc_open("test1.nc")
-	nc.copy.atts(f.in, "tasmax", f.out, "tasmax", c("long_name", "standard_name", "units", "cell_methods", "coordinates", "grid_mapping"))
+#	f.in <- nc_open("test1.nc")
+#	nc.copy.atts(f.in, "tasmax", f.out, "tasmax", c("long_name", "standard_name", "units", "cell_methods", "coordinates", "grid_mapping"))
 	
+	ncatt_put(f.out, "tasmax", "_FillValue", -100)
     ncvar_put(f.out, "tasmax", dat)
 	
 	
