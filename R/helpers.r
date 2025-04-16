@@ -308,6 +308,8 @@ nc.conform.data <- function(f.input, f.output, v.input, v.output, dat.input, all
 #' 
 #' Attributes can also be renamed at the destination using \code{rename.mapping}, a named vector of strings in which the name of the attribute to be renamed is the name, and the attribute's new name is the value.
 #'
+#' Note: Depending on which version of the netCDF4 system library you have installed, copying a _FillValue attribute may raise an error.
+#'
 #' @param f.src The source file (an object of class \code{ncdf4})
 #' @param v.src The source variable: a string naming a variable in a file or an object of class \code{ncvar4}.
 #' @param f.dest The destination file (an object of class \code{ncdf4})

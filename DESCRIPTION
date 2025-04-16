@@ -1,6 +1,6 @@
 Package: ncdf4.helpers
-Version: 0.3-7
-Date: 2025-03-06
+Version: 0.3-8
+Date: 2025-04-15
 Title: Helper Functions for Use with the 'ncdf4' Package
 Authors@R: c(
     person("David", "Bronaugh", email = "bronaugh@uvic.ca", role = "aut"),
